@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { tryPasswords } from "lib/dnet-auth";
+import { tryPasswords, decodeBaseN } from "lib/dnet-auth";
 
 const LOG_PORT = 19;
 const scriptName = "Dispatchers/core.js";
@@ -27,19 +27,23 @@ async function lightweightAuthenticate(ns: NS, neighbor: string, sendLog: (msg: 
             "password", "default", "factory", "settings", "admin", "root", "12345", "0000"
         ].filter(Boolean);
     }
-    else if (details.modelId === "DeskMemo_3.1" || details.modelId === "PHP 5.4") {
+    else if (details.modelId === "DeskMemo_3.1") {
         const m = details.passwordHint.match(/(?:key is|secret is|PIN is|use|shuffled)\s*([0-9]+)/i);
         passwordsToTry = [m ? m[1] : details.passwordHint.replace(/[^0-9]/g, "")];
     }
     else if (details.modelId === "CloudBlare(tm)") {
         passwordsToTry = [details.data ? details.data.replace(/[^0-9]/g, "") : ""];
     }
+    else if (details.modelId === "Laika4") {
+        // Fixed 4-entry dictionary, no hint-derivable info: fido, spot, rover, max.
+        passwordsToTry = ["fido", "spot", "rover", "max"];
+    }
     else if (details.modelId === "OctantVoxel") {
-        // details.data is "base,encodedValue" (e.g. "2,11001110"); the password is that value read in base 10.
+        // details.data is "base,encodedValue" (e.g. "2,11001110"); base can be fractional on harder servers.
         const [baseStr, encoded] = (details.data ?? "").split(",");
-        const base = Math.trunc(Number(baseStr));
+        const base = Number(baseStr);
         if (encoded && base >= 2 && base <= 36) {
-            const decoded = parseInt(encoded, base);
+            const decoded = Math.round(decodeBaseN(encoded, base));
             if (!isNaN(decoded)) {
                 passwordsToTry = [decoded.toString()];
             }
@@ -116,6 +120,7 @@ export async function main(ns: NS): Promise<void> {
         ns.clearPort(LOG_PORT);
         sendLog("Bootstrapping core lightweight worm network...");
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
             const neighbors: string[] = ns.dnet.probe();
             for (const neighbor of neighbors) {
@@ -138,6 +143,7 @@ export async function main(ns: NS): Promise<void> {
             ns.exec("Workers/heavy-worker.js", currentNode, 1);
         }
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
             const neighbors: string[] = ns.dnet.probe();
             for (const neighbor of neighbors) {
