@@ -3,6 +3,7 @@ import { tryPasswords } from "lib/dnet-auth";
 
 const LOG_PORT = 19;
 const scriptName = "Dispatchers/core.js";
+const scriptAuthName = "lib/dnet-auth.js";
 
 async function lightweightAuthenticate(ns: NS, neighbor: string, sendLog: (msg: string) => void) {
     const details = ns.dnet.getServerDetails(neighbor);
@@ -33,6 +34,17 @@ async function lightweightAuthenticate(ns: NS, neighbor: string, sendLog: (msg: 
     else if (details.modelId === "CloudBlare(tm)") {
         passwordsToTry = [details.data ? details.data.replace(/[^0-9]/g, "") : ""];
     }
+    else if (details.modelId === "OctantVoxel") {
+        // details.data is "base,encodedValue" (e.g. "2,11001110"); the password is that value read in base 10.
+        const [baseStr, encoded] = (details.data ?? "").split(",");
+        const base = Math.trunc(Number(baseStr));
+        if (encoded && base >= 2 && base <= 36) {
+            const decoded = parseInt(encoded, base);
+            if (!isNaN(decoded)) {
+                passwordsToTry = [decoded.toString()];
+            }
+        }
+    }
     else {
         const numMatch = details.passwordHint.match(/([0-9]+)/);
         passwordsToTry = numMatch ? [numMatch[1], "password"] : ["password", "default", "admin"];
@@ -56,7 +68,7 @@ async function handleNode(ns: NS, neighbor: string, home: string, sendLog: (msg:
 
     const authenticated = await lightweightAuthenticate(ns, neighbor, sendLog);
     if (authenticated) {
-        if (ns.scp(scriptName, neighbor, home)) {
+        if (ns.scp(scriptName, neighbor, home) && ns.scp(scriptAuthName, neighbor, home)) {
             const scriptRam = ns.getScriptRam(scriptName, neighbor);
             const availableRam = ns.getServerMaxRam(neighbor) - ns.getServerUsedRam(neighbor);
 

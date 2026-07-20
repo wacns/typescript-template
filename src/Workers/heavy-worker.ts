@@ -1,6 +1,22 @@
 import { NS } from "@ns";
 import { romanToInt, tryPasswords } from "lib/dnet-auth";
 
+// Factori-Os passwords are a random product of primes with no leaking hint, but the exact digit
+// count is known via passwordLength. Above this many digits the brute-force range gets too large to be worth it.
+const MAX_BRUTE_FORCE_DIGITS = 4;
+
+/** Reads server logs via heartbleed, looking for a password the server occasionally leaks in its own noise. */
+async function sniffLeakedPassword(ns: NS, neighbor: string): Promise<string | null> {
+    const res = await ns.dnet.heartbleed(neighbor, { logsToCapture: 5 });
+    if (!res.success) return null;
+
+    for (const line of res.logs) {
+        const match = line.match(/Logging in with passcode:\s*(\S+)/);
+        if (match) return match[1];
+    }
+    return null;
+}
+
 export async function main(ns: NS): Promise<void> {
     const currentNode = ns.getHostname();
     ns.disableLog("sleep");
@@ -28,6 +44,22 @@ export async function main(ns: NS): Promise<void> {
                 const min = matches ? parseInt(matches[1]) : 0;
                 const max = matches ? parseInt(matches[2]) : 100;
                 candidates = Array.from({ length: max - min + 1 }, (_, i) => (min + i).toString());
+            }
+            else if (details.modelId === "Factori-Os") {
+                const length = details.passwordLength;
+                if (length > 0 && length <= MAX_BRUTE_FORCE_DIGITS) {
+                    const min = 10 ** (length - 1);
+                    const max = 10 ** length;
+                    candidates = Array.from({ length: max - min }, (_, i) => (min + i).toString());
+                }
+            }
+            else if (details.modelId === "OpenWebAccessPoint") {
+                if (details.requiredCharismaSkill <= ns.getPlayer().skills.charisma) {
+                    const leaked = await sniffLeakedPassword(ns, neighbor);
+                    if (leaked !== null) {
+                        candidates = [leaked];
+                    }
+                }
             }
 
             if (candidates.length > 0) {
