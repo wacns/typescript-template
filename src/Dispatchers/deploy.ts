@@ -7,6 +7,11 @@ export async function main(ns: NS) {
     ns.disableLog("exec");
     ns.clearLog();
 
+    const flags = ns.flags([
+        ["no-cloud", false], // disable purchasing & upgrading cloud servers
+    ]);
+    const cloudBuyingDisabled = flags["no-cloud"] as boolean;
+
     const payload = "HackRelated/worker.js";
     const autoBuyerScript = "Utils/purchase-cloud-servers.js";
     const darkwebScript = "Utils/auto-darkweb.js";
@@ -43,11 +48,11 @@ export async function main(ns: NS) {
     const startTime = Date.now();
     const startMoney = ns.getServerMoneyAvailable("home");
 
-    ns.tprint(`[START] V2.7.1 Botnet Commander Online. (Singularity Access: ${hasSingularity})`);
+    ns.tprint(`[START] V2.7.1 Botnet Commander Online. (Singularity Access: ${hasSingularity}, Cloud Buying: ${cloudBuyingDisabled ? "Disabled" : "Enabled"})`);
 
     while (true) {
         // --- 0. HARDWARE & SOFTWARE PROVISIONING ---
-        if (ns.fileExists(autoBuyerScript, "home")) {
+        if (!cloudBuyingDisabled && ns.fileExists(autoBuyerScript, "home")) {
             ns.exec(autoBuyerScript, "home", 1, -1);
         }
 
@@ -190,7 +195,7 @@ export async function main(ns: NS) {
             ns.print(`🤖 Active Drones  : ${deployedServers} servers`);
             ns.print(`🔥 Total Threads  : ${totalThreads} attacking`);
             ns.print("-----------------------------------------");
-            ns.print(`☁️ Cloud Servers  : ${currentPurchased.length} / ${serverLimit} Owned`);
+            ns.print(`☁️ Cloud Servers  : ${currentPurchased.length} / ${serverLimit} Owned${cloudBuyingDisabled ? " (buying disabled)" : ""}`);
             ns.print(`🛒 Session Bought : ${sessionBought}`);
             ns.print(`⬆️ Session Upgrade: ${sessionUpgraded}`);
 
