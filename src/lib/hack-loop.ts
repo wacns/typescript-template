@@ -1,12 +1,11 @@
-import {NS} from "@ns"
+import { NS } from "@ns";
 
-/** @param {NS} ns */
-export async function main(ns: NS) {
-    const target = ns.args[0].toString(); // Takes the target name as an argument
-    const moneyThresh = ns.getServerMaxMoney(target) * 0.75;
+/** Weakens/grows/hacks target forever, keeping security near its floor and money near its cap. */
+export async function runHackLoop(ns: NS, target: string): Promise<void> {
     const securityThresh = ns.getServerMinSecurityLevel(target) + 5;
+    const moneyThresh = ns.getServerMaxMoney(target) * 0.75;
 
-    while(true) {
+    while (true) {
         if (ns.getServerSecurityLevel(target) > securityThresh) {
             await ns.weaken(target);
         } else if (ns.getServerMoneyAvailable(target) < moneyThresh) {

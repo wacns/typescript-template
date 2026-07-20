@@ -1,4 +1,5 @@
 import { NS } from "@ns";
+import { openAvailablePorts } from "lib/root-access";
 
 /** @param {NS} ns */
 export async function main(ns: NS) {
@@ -91,14 +92,9 @@ export async function main(ns: NS) {
         let rootedCount = 0;
         for (const server of knownServers) {
             if (!ns.hasRootAccess(server)) {
-                let ports = 0;
-                if (ns.fileExists("BruteSSH.exe", "home")) { ns.brutessh(server); ports++; }
-                if (ns.fileExists("FTPCrack.exe", "home")) { ns.ftpcrack(server); ports++; }
-                if (ns.fileExists("relaySMTP.exe", "home")) { ns.relaysmtp(server); ports++; }
-                if (ns.fileExists("HTTPWorm.exe", "home")) { ns.httpworm(server); ports++; }
-                if (ns.fileExists("SQLInject.exe", "home")) { ns.sqlinject(server); ports++; }
+                const portsOpened = openAvailablePorts(ns, server);
 
-                if (ns.getServerNumPortsRequired(server) <= ports) {
+                if (ns.getServerNumPortsRequired(server) <= portsOpened) {
                     ns.nuke(server);
                     ns.tprint(`[SYSTEM BREACH] Auto-Nuked new server: ${server}`);
                 }
