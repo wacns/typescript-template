@@ -2,7 +2,7 @@ import { NS } from "@ns";
 import { scanAllServers } from "lib/network-scan";
 import { planBatch } from "lib/hwgw-batch";
 
-const ACTION_SCRIPT = "HackRelated/hwgw-action.js";
+export const ACTION_SCRIPT = "HackRelated/hwgw-action.js";
 
 /** Greedily packs threadsNeeded across rooted servers (scp-ing the action script where needed). */
 function allocateThreads(

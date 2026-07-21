@@ -1,6 +1,7 @@
 import { NS } from "@ns";
 import { openAvailablePorts } from "lib/root-access";
 import { scanAllServers } from "lib/network-scan";
+import { ACTION_SCRIPT } from "Dispatchers/hwgw-batcher";
 
 /** @param {NS} ns */
 export async function main(ns: NS) {
@@ -166,14 +167,27 @@ export async function main(ns: NS) {
 
         if (payload === BATCHER_PAYLOAD) {
             // Single coordinator model: hwgw-batcher.js manages its own thread allocation across the
-            // whole network, so there's just one instance to keep running for the current target.
+            // whole network, so there's just one coordinator instance to keep running for the target.
             if (targetChanged) {
                 ns.scriptKill(BATCHER_PAYLOAD, "home");
             }
             if (ns.fileExists(BATCHER_PAYLOAD, "home") && !ns.isRunning(BATCHER_PAYLOAD, "home", currentTarget)) {
                 ns.exec(BATCHER_PAYLOAD, "home", 1, currentTarget);
             }
-            deployedServers = ns.isRunning(BATCHER_PAYLOAD, "home", currentTarget) ? 1 : 0;
+
+            // The coordinator itself only ever runs on home - the actual hack/grow/weaken bursts it
+            // schedules land on whatever servers allocateThreads() picked, and each burst is a brief
+            // one-shot process, so tallying them here (rather than just checking the coordinator) is
+            // what makes the dashboard's drone/thread counts reflect real batcher activity.
+            for (const server of knownServers) {
+                if (!ns.hasRootAccess(server)) continue;
+
+                const actionProcesses = ns.ps(server).filter(p => p.filename === ACTION_SCRIPT && p.args[0] === currentTarget);
+                if (actionProcesses.length > 0) {
+                    deployedServers++;
+                    totalThreads += actionProcesses.reduce((sum, p) => sum + p.threads, 0);
+                }
+            }
         } else {
             const scriptRam = ns.getScriptRam(payload, "home");
 
