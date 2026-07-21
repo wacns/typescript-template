@@ -7,7 +7,9 @@
     "watch:remote": "bitburner-filesync",
     "watch:init": "node build/init.js",
     "watch:all": "concurrently npm:watch:transpile npm:watch:local npm:watch:remote",
-    "watch": "npm run watch:init && npm run watch:all"
+    "watch": "npm run watch:init && npm run watch:all",
+    "lint": "eslint src",
+    "update:sphyxos": "node build/update-sphyxos.js"
   },
   "author": "hydroflame, Hoekstraa, based on work by SlyCedix",
   "devDependencies": {

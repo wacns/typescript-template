@@ -1,0 +1,287 @@
+v2.3
+-Added the Change Log
+2.3.1
+-Fixed Backdoor All script bug
+-Fixed batcher bug for use hacknet option
+2.3.2
+-Attempted to fix out fo threads issue with batcher
+-Added recovery to targeting for batcher.  The first target needs to be at min security now
+2.3.3
+-Looked into another fix for batcher RAM issues
+2.3.4
+-Decreased the starting hight of the stocks script
+2.3.5
+-Fixed a bug in batcher targetting (first target), where if no servers were at min security it would fail
+2.3.6
+-Revised first target selection
+2.3.7
+-Revised first target selection again
+2.3.8
+-Fixed starting IPvGo being stuck on enabled if it failed to launch
+2.3.9
+-Fixed crash when batcher starts with no RAM avaialble on the network
+2.3.10
+-Fixed an end game interaction with the batcher when there is no RAM available on the network
+2.4
+-Added autoPilot v1
+-Added check in corps to kill the script if a corp cannot be created
+-Fixed a bug in backdoor that could cause it to think you were backdooring home
+-Fixed a bug in dumpmoney where it did not factor in the favor change of BN 12
+2.5
+-Added Stanek support to autoPilot
+-Added IPvGo support to autoPilot
+-Added BN 2 customized support to autoPilot
+-Changed up Gangs.
+--Will now autobuy EQ when it reaches 4 or more members.  Changed training stats down to 20 from 60
+--When the mode is set to Auto, will do respect until you can purchase all augments, then it switches to money
+-IPvGo will now cheat at a size of 7 from 5
+-IPvGo will now require a contiguous chain of 7 to use snake eyes
+-Fixed an error in sleeves regarding a error when sending an unstripped promise over ports
+-Added 3.0.0 support, along side of 2.8.1 support.
+-Added info on current game version at the top of the main loader script
+2.5.1
+-Fixed backdoor all's compatability between 2.8.1 and 3.0.0
+2.5.2
+-Fixed corps backward compatability
+2.5.3
+-Fixed Casino slowdown issues in 3.0
+-Fixed Stocks backwards compatability issue
+-Fixed issue with DumpMoney where NFG would not be purchased if you were a high ranking member of "Church of the Machine Gods"
+-Added BN 3, 4, 5 and 10 to the autoPilot list - Requires more testing
+2.5.4
+-Added a slowdown to Casino in the prep stage to allow the page to refresh.  Needed to get accurate results
+-Added a loop to buying augments in DumpMoney, where it stops trying if it fails to buy anything during the loop to account for pre-reqs
+-Added a new cheat move to IPvGo.  WallBreaker.  Will try to destroy empty nodes if a group only has 3-4 near the end to use up cheats
+-Updated logic in IPvGo for agro attack and def attack, thanks to Dusky (Discord)
+-Fixed an issue in Stocks regarding an unexpected placeholder error
+-Fixed an issue in Stocks regarding incorrect typing of short(S) and long(L) between versions
+-Updated backdoor timings to help prevent backdooring "home" error
+-Widened the batcher log window so the Take line doesn't wrap
+-Added new achievements to Unlock All Achievements
+-Changed batcher timings to pause after 200ms instead of 2000 batches
+-Added modes to batcher display
+-Tested autoPilot1 for BN's 1, 4 - OK  BN10 should be OK too but needs further testing
+2.5.5
+-Tested autoPilot1 for BN's 2.  Current tested autoPilot stages are BN's 1, 2, 4
+-Fixed a missing mode display in the batcher
+-Increased backdoor timings to avoid backdooring home.  Down to 10 servers a second.
+2.5.6
+-Added more delay to casino starting to allow other scripts to wait for it to be ready
+-Fixed autoBuyHacknet for batcher
+-Lowered the revenue needed to trigger going public in corps - along with the dividends payout
+-Tested autopilot1 in BN 3, 5, 9, 10
+  -autopilot1 can now do BN's 1, 2, 3, 4, 5, 9, 10 with no supports
+-Casino will now bet $0 when calculating the sequence and will recover if you click out of it
+2.5.7
+-Fixed a few bugs in autpilot for BN 9
+-Added a delay to make sure coding contracts finish before moving on in autopilot
+-Testing BN 14 in autopilot
+-Removed "fulcrumassets" server from autopilot backdoor to save time
+-Added a larger minimum rep purchase to Dump Money to avoid a potential loop
+-Added a popout option to the batcher for the log
+2.5.8
+-Removed powerhouse-fitness from autopilot backdoor to save time
+-Fixed auto infiltrate status when resetting with it enabled
+-Confirmed autopilot for BN 14 works without supports
+-Fixed an issue in autopilot for BN 10 where it would kill the script if you were not in new tokyo when it tries to move there
+-Added a toggle to autopilot, that will either move to the next node or leave you at the node selection screen when done
+-Added popout to autopilot, stocks, IPvGo
+-Fixed error when turning off autohashing for batcher
+-Prevented autopilot from ending the node when calling it's backdoor script
+2.5.9
+-Added popout to BB, Gang
+-Added BN 6 and 7 to autopilot
+-Allowed autopilot to remember if it had gone through an upgrade cycle if stopped and restarted
+-Modified BB Analysis algorithm.  2 modes, with and without sleeves
+-Fixed BB bug that crashed script sometime when doing a Black Op
+-Added Charisma to BB training
+-Fixed Grafting Standard option, renamed to None
+-Added "Fastest" to Grafting options
+2.5.10
+-Added popout to Grafting, Sleeves
+-Stopped backdoor basic from spoiling the truth
+-Fixed BB finisher crash
+-Fixed crash in batcher when no good "next target" is found
+2.5.11
+-Lowered dump money ram cost back to 8gb
+-dumpmoney will now reserver 1m in cash
+-autoinfil will now autoselect a faction for rep if you only have 1 available
+-Testing autopilot for BN 13
+2.5.12
+-Ram dodged the autoinfil change from above
+2.5.13
+-Modified the faction option for autoinfil slightly and removed bug introduced
+2.5.14
+-Fixed a bug in autopilot in regards to a city error
+2.5.15
+-Fixed a second bug in autopilot in regards to city error
+2.6
+-Changed option in batcher from displaying "BuyHashes" to "AutoHash"
+-Added platform to the loaders display
+-Added step information to autopilot
+-autopilot good for BN 13 now.  Leaves 8, 11 and 12 to do
+-Changed Stocks money tracking to better track money gained
+-Added more info to Stocks
+-Added reset button to Stocks that resets the time before the next report, sales fees and banked
+-Fixed Stocks display of shorts information
+2.6.1
+-autopilot good for BN 11 now
+-Added a slowmode to IPvGo.  This will add a delay of 2 seconds between moves
+-Removed the displaying of cheat error if you do not have the unlock while having it turned on
+--This hopefully fixes a rare crash after cheating when not able to
+-Added button to enable/disable error loggin in Batcher - default is disabled
+-Added padding button to Batcher, will pad grows 15% and add enough weakens to offset the addition.  Default is disabled
+-Improved dump money a bit, added filter for SoA faction and a min of 0 to donations.
+2.6.2
+-Completely revamped the innerds of autopilot.  Please report any errors
+-Fixed a bug in autopilot that caused it to constantly buy ram if able
+-Stopped autopilot from resetting you to buy ram on game restart if your money on hand supported it
+-autopilot now supports BN 8
+-Updated a syntax error in changelog.js
+-Fixed an issue in runit regarding scriptOverride costs
+-Updated dump money.  It will now purchase home RAM as the last thing it does
+-Added next update time to Stocks
+-Added a Keep Tab Alive button to Misc.  This will play an inaudible audio signal to keep a webbrowser tab alive when backgrouned
+2.6.3
+-Fixed autopilot for BN 8 and added compatability between version 2.8.1stable and 3.0dev
+2.6.4
+-Fixed a small bug in autopilot BN 8 that prevent stocks from opening automatically in 2.8.1
+2.6.5
+-Stopped autopilot from starting corps in the background in BN 12
+-Reduced the size of the Blade Burner script by 4gb
+-Added "Total Number of Primes" to the coding contracts solver
+-Fixed an issue in Stocks that prevented it from buying stocks
+2.6.6
+-Added better memory handling to the coding contracts webworker management
+-Fixed an error in autopilot for BN 10
+2.6.7
+-Fixed another error in autopilot for BN 10 where it did not show info on 14/15
+2.6.8
+-Updated autopilot for BN 10.  It will not correctly select the Covenant faction if you are a member of multiple
+2.6.9
+-Fixed autopilot's tracking for BN 6 and 7
+2.6.10
+-Fixed some autopilot errors in BN 9
+2.6.11
+-Reduced the RAM cost of the Gang script to 4gb
+-Disabled all logs in hack/grow/weaken to improve performance
+-Upgraded scripts that purchased servers to support the new .cloud namespace
+-Ram dodged the attempt call in coding contacts
+-Added ramOverride to all exec calls for proxy.
+-Removed ramOverride from all proxy files
+-Changes buttons and backgrounds to match your current theme.  If you change your theme you will need to refresh or click something for the Loader to update
+2.6.12
+-Fixed the server purchaser script
+2.6.13
+-Fixed a ram dodging command to use ramOverride
+2.6.14
+-Fixed a compatability issue in sleeves and gangs
+2.6.15
+-Added backwards compatability for a gang change
+2.6.16
+-Added new coding contract for Largest Rectangle in Matrix
+2.6.17
+-Trying to get new github repo to download the proper information.
+2.6.18
+-Changed over update button link to the new link
+3.0.0
+-Updated main Loader script to use React.  Should be much snappier now
+-Buttons/Backgrounds now use themes inline color to auto refresh when changed
+-Changed how options are displayed in the batcher (added spacing between all of them)
+-Updated proxy command to remove promises and enclose the attempt within a try/catch and remove all promises
+--proxy command should now be able to replace the majority of all previous ram dodged calls.  Will slowly phase out the old ones
+-Added a Games section.  Current games are Minesweeper and DOOM (network connection required for DOOM)
+-Added the new Dark Net mechanic
+-Switched all programs that receive updates to be on a 200ms async timer to look for those updates
+-Added popout to Corp
+-Added a Theme Editor, that can edit all your style info, theme colors, reset, save and load your themes+styles
+-Loader now has a persistent state, which saves across closes and restarts
+-Reorganized top buttons into an "Actions" dropdown menu
+-Added a "Join Discord!!" button to the loader's actions
+-Added a "Create GitHub Issue" button to the loader's actions
+-Added a new "Mini" view.  Toggle between views by pressing the view button
+-Added the ability to hide rows from view
+-Added delete option for Stanek layouts
+-Add a new Dev Menu - the NOT the Dev Menu is a recreation of the dev menu, in a tail window
+-The "Unlock All Achievements" button now requires you confirm a prompt
+3.0.1
+-Fixed autoinfiltration
+-Fix some darknet issues
+3.0.2
+-Fixed autopilot issues
+3.0.3
+-Trying to fix autopilot again
+-Fixes to darknet
+3.0.4
+-Fixed darknet again
+3.0.5
+-Added a limiter to AutoInfil.  It requires 80% market demand
+-Reverted lab solver to the diagnostics version
+-Added the game "Timberman"
+-Added a guard against darknet giving more stocks than you should be able to get
+3.0.5.1
+-Added forced move when lab solver runs out
+-Fixed stocks interactions with darknet causing a freeze
+3.0.5.2
+-Fixed darknet more
+3.0.5.3
+-Let darknet show all the time.  It will alert you if it cannot be started
+-Updated darknet again
+3.0.5.4
+-Still workin on darknet
+-Fixed a few issues in autopilot
+-Fixed a display issue in loader
+3.0.5.5
+-Darknet Fixes
+3.0.5.6
+-Added webstorms to the darknet controller
+-Added stock manipulation to the darknet controller
+-Fixed a corp display bug (Thank you Discord user @Jake DeZure )
+-Fixed network virus issues from removing try/catch
+3.0.5.7
+-Moved some proxie calls from darknet that were run on home run locally instead
+-Added a Hash AutoSpend button.
+-Closing the lab map will turn Show Lab Map off
+-Added a training section to Sleeves
+-Added a training option for Gangs
+-Fixed BN display in Loader
+-Added a crash guard for Corps.  It will no longer start if you run it manually and don't have its pre-reqs
+3.0.5.8
+-Converted ns.dnet command to new version
+3.0.5.9
+-Isolated Module error.  Changed webworkers in every place they are used to truly persist
+--This will cause an extra entry in the memory tab of the dev console for every webworker
+-Fixed Encryption II Vigenère Cipher (It now has the è) in Not the dev menu
+-Fixed warning message for Darknet when you don't have DarkscapeNavigator.exe
+-Fixed stopping BladeBurner script leaving the system thinking it's still running
+3.0.5.10
+-Fixed share ram to reserve the proper amount of home ram
+-Fixed memory leaks in various scripts
+--Removed all evals
+-Manually solving .cct's will now bring up a log window instead of printing to the terminal
+-Fixed autoinfil when negative market value happens
+3.0.5.11
+-Minor adjustment to previous autoinfil fix
+-Fixed another memory leak in darknet
+3.0.5.12
+-Darknet fixes
+--Fixed more memory leaks
+--Added a try/catch after breaking into a server to make sure it's still there
+--Updated the Lab solver
+3.0.5.13
+-Patched low home ram batching (16gb and lower)
+3.0.5.14
+-Fixed some corp bugs
+-Patched Labyrinth solver again, and again
+-Removed memory buildup from saved files for Darknet
+3.0.5.15
+-Fixed Darknet on game startup not having enough RAM to run spawn.  Unblockes a bit more ram now before starting up
+-Added a guard for Darknet restarts on game load to close the script if it grabbed the wrong Module
+-Added a guard to all webworker activity to not pull an invalid worker from the pool if one gets put in
+3.0.5.16
+-Brought batcher back to 100k batches.
+3.0.5.17
+-Added switching to the terminal for various scripts
+-Fixed an error in the batcher that occured when money was off with xp on, and then you turn xp off
+3.0.5.18
+-Fixed several terminal injection commands
