@@ -1,5 +1,6 @@
 import { NS } from "@ns";
 import { openAvailablePorts } from "lib/root-access";
+import { scanAllServers } from "lib/network-scan";
 
 /** @param {NS} ns */
 export async function main(ns: NS) {
@@ -12,10 +13,13 @@ export async function main(ns: NS) {
     ]);
     const cloudBuyingDisabled = flags["no-cloud"] as boolean;
 
-    const payload = "HackRelated/worker.js";
+    const PLAIN_PAYLOAD = "HackRelated/worker.js";
+    const FORMULA_PAYLOAD = "HackRelated/formula-worker.js";
+    const BATCHER_PAYLOAD = "Dispatchers/hwgw-batcher.js";
     const autoBuyerScript = "Utils/purchase-cloud-servers.js";
     const darkwebScript = "Utils/auto-darkweb.js";
     let currentTarget = "n00dles";
+    let currentPayload = PLAIN_PAYLOAD;
 
     // --- NEW: DYNAMIC SINGULARITY CHECK ---
     // Check if the player has the ability to run darkweb scripts
@@ -80,18 +84,7 @@ export async function main(ns: NS) {
         }
 
         // 1. Map the entire network
-        const serversToScan = ["home"];
-        const knownServers = new Set(["home"]);
-
-        for (let i = 0; i < serversToScan.length; i++) {
-            const currentServer = serversToScan[i];
-            for (const nextServer of ns.scan(currentServer)) {
-                if (!knownServers.has(nextServer)) {
-                    knownServers.add(nextServer);
-                    serversToScan.push(nextServer);
-                }
-            }
-        }
+        const knownServers = scanAllServers(ns);
 
         // 2. Auto-Cracker
         let rootedCount = 0;
@@ -114,9 +107,10 @@ export async function main(ns: NS) {
 
         for (const server of knownServers) {
             if (ns.hasRootAccess(server) && ns.getServerMaxMoney(server) > 0) {
-                if (ns.getServerRequiredHackingLevel(server) <= (myHackLevel / 2)) {
+                if (ns.getServerRequiredHackingLevel(server) <= myHackLevel) {
                     const weakenTime = ns.getWeakenTime(server);
-                    const score = ns.getServerMaxMoney(server) / (ns.getServerMinSecurityLevel(server) * weakenTime);
+                    const hackChance = ns.hackAnalyzeChance(server);
+                    const score = (ns.getServerMaxMoney(server) * hackChance) / weakenTime;
 
                     if (score > bestScore) {
                         bestScore = score;
@@ -134,41 +128,86 @@ export async function main(ns: NS) {
             targetChanged = true;
         }
 
+        // Pick the payload tier based on live Formulas.exe availability and how close the target is to
+        // "prepped" (security at floor, money at cap) - hwgw-batcher.ts assumes that starting state, so
+        // formula-worker.ts (or worker.ts, with no Formulas.exe) handles getting it there first. Checking
+        // this live every cycle means gaining/losing Formulas.exe or a target drifting out of prep (e.g.
+        // an outside actor also hacking it) is picked up automatically without anything crashing.
+        const hasFormulas = ns.fileExists("Formulas.exe", "home");
+        const securityMargin = ns.getServerSecurityLevel(currentTarget) - ns.getServerMinSecurityLevel(currentTarget);
+        const moneyRatio = ns.getServerMaxMoney(currentTarget) > 0
+            ? ns.getServerMoneyAvailable(currentTarget) / ns.getServerMaxMoney(currentTarget)
+            : 1;
+        const isPrepped = securityMargin <= 1 && moneyRatio >= 0.99;
+
+        let payload: string;
+        if (hasFormulas && isPrepped) {
+            payload = BATCHER_PAYLOAD;
+        } else if (hasFormulas) {
+            payload = FORMULA_PAYLOAD;
+        } else {
+            payload = PLAIN_PAYLOAD;
+        }
+        const payloadChanged = payload !== currentPayload;
+        const previousPayload = currentPayload;
+        currentPayload = payload;
+
+        if (payloadChanged) {
+            for (const server of knownServers) {
+                if (ns.hasRootAccess(server)) {
+                    ns.scriptKill(previousPayload, server);
+                }
+            }
+        }
+
         // 5. Continuous Deployment & RAM Scavenging
         let totalThreads = 0;
         let deployedServers = 0;
-        const scriptRam = ns.getScriptRam(payload, "home");
 
-        for (const server of knownServers) {
-            if (!ns.hasRootAccess(server)) continue;
-
-            if (server !== "home") {
-                await ns.scp(payload, server, "home");
-            }
-
+        if (payload === BATCHER_PAYLOAD) {
+            // Single coordinator model: hwgw-batcher.js manages its own thread allocation across the
+            // whole network, so there's just one instance to keep running for the current target.
             if (targetChanged) {
-                ns.scriptKill(payload, server);
+                ns.scriptKill(BATCHER_PAYLOAD, "home");
             }
-
-            const maxRam = ns.getServerMaxRam(server);
-            const usedRam = ns.getServerUsedRam(server);
-            let availableRam = maxRam - usedRam;
-
-            if (server === "home") {
-                const reserve = Math.max(32, maxRam * 0.10);
-                availableRam -= reserve;
+            if (ns.fileExists(BATCHER_PAYLOAD, "home") && !ns.isRunning(BATCHER_PAYLOAD, "home", currentTarget)) {
+                ns.exec(BATCHER_PAYLOAD, "home", 1, currentTarget);
             }
+            deployedServers = ns.isRunning(BATCHER_PAYLOAD, "home", currentTarget) ? 1 : 0;
+        } else {
+            const scriptRam = ns.getScriptRam(payload, "home");
 
-            const threads = Math.floor(availableRam / scriptRam);
+            for (const server of knownServers) {
+                if (!ns.hasRootAccess(server)) continue;
 
-            if (threads > 0) {
-                ns.exec(payload, server, threads, currentTarget);
-            }
+                if (server !== "home") {
+                    await ns.scp(payload, server, "home");
+                }
 
-            const activeWorkers = Math.floor(ns.getServerUsedRam(server) / scriptRam);
-            if (activeWorkers > 0) {
-                totalThreads += activeWorkers;
-                deployedServers++;
+                if (targetChanged) {
+                    ns.scriptKill(payload, server);
+                }
+
+                const maxRam = ns.getServerMaxRam(server);
+                const usedRam = ns.getServerUsedRam(server);
+                let availableRam = maxRam - usedRam;
+
+                if (server === "home") {
+                    const reserve = Math.max(32, maxRam * 0.10);
+                    availableRam -= reserve;
+                }
+
+                const threads = Math.floor(availableRam / scriptRam);
+
+                if (threads > 0) {
+                    ns.exec(payload, server, threads, currentTarget);
+                }
+
+                const activeWorkers = Math.floor(ns.getServerUsedRam(server) / scriptRam);
+                if (activeWorkers > 0) {
+                    totalThreads += activeWorkers;
+                    deployedServers++;
+                }
             }
         }
 
@@ -190,8 +229,12 @@ export async function main(ns: NS) {
             ns.print("🛡️ BOTNET COMMANDER V2.7 🛡️");
             ns.print("=========================================");
             ns.print(`🎯 Current Target : ${currentTarget}`);
+            const payloadLabel = currentPayload === BATCHER_PAYLOAD ? "hwgw-batcher (prepped)"
+                : currentPayload === FORMULA_PAYLOAD ? "formula-worker (prepping)"
+                : "worker (heuristic)";
+            ns.print(`🧮 Payload        : ${payloadLabel}`);
             ns.print(`⏳ Hack Cycle     : ${formattedCycleTime}`);
-            ns.print(`🖥️ Rooted Servers : ${rootedCount} / ${knownServers.size}`);
+            ns.print(`🖥️ Rooted Servers : ${rootedCount} / ${knownServers.length}`);
             ns.print(`🤖 Active Drones  : ${deployedServers} servers`);
             ns.print(`🔥 Total Threads  : ${totalThreads} attacking`);
             ns.print("-----------------------------------------");
