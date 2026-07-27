@@ -10,6 +10,7 @@
     "watch": "npm run watch:init && npm run watch:all",
     "lint": "eslint src",
     "update:sphyxos": "node build/update-sphyxos.js",
+    "update:sphyxos:beta": "node build/update-sphyxos.js --beta",
     "pull:game": "node build/pull-from-game.js"
   },
   "author": "hydroflame, Hoekstraa, based on work by SlyCedix",

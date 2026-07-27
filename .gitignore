@@ -2,3 +2,5 @@ node_modules/
 dist/
 NetscriptDefinitions.d.ts
 game-pull/
+build/sphyxos-version.txt
+build/sphyxos-version-beta.txt

@@ -1,13 +1,16 @@
 // Pulls the latest SphyxOS release manifest and writes it into src/, mirroring what SphyxOS's own
-// in-game updater does (same SphyxOSHash.txt / SphyxOS.txt endpoints) but targeting local disk instead
-// of the Bitburner filesystem. Run with `npm run update:sphyxos` (add --force to skip the hash check).
+// in-game updater does (same SphyxOSHash.txt / SphyxOS.txt endpoints, or the SphyxOSBetaHash.txt /
+// SphyxOSBeta.txt endpoints its in-game "Beta" toggle uses) but targeting local disk instead of the
+// Bitburner filesystem. Run with `npm run update:sphyxos` (add --force to skip the hash check, --beta
+// to track the beta channel instead of stable).
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const HASH_URL = 'https://raw.githubusercontent.com/Sphyxis/SphyxOS/main/SphyxOSHash.txt';
-const MANIFEST_URL = 'https://raw.githubusercontent.com/Sphyxis/SphyxOS/main/SphyxOS.txt';
-const versionFile = path.resolve(__dirname, 'sphyxos-version.txt');
+const beta = process.argv.includes('--beta');
+const HASH_URL = `https://raw.githubusercontent.com/Sphyxis/SphyxOS/main/SphyxOS${beta ? 'Beta' : ''}Hash.txt`;
+const MANIFEST_URL = `https://raw.githubusercontent.com/Sphyxis/SphyxOS/main/SphyxOS${beta ? 'Beta' : ''}.txt`;
+const versionFile = path.resolve(__dirname, beta ? 'sphyxos-version-beta.txt' : 'sphyxos-version.txt');
 const srcRoot = path.resolve(__dirname, '..', 'src');
 const force = process.argv.includes('--force');
 
@@ -26,15 +29,16 @@ function get(url) {
 }
 
 async function main() {
+  const channel = beta ? 'beta' : 'stable';
   const remoteHash = (await get(HASH_URL)).trim();
   const localHash = fs.existsSync(versionFile) ? fs.readFileSync(versionFile, 'utf8').trim() : null;
 
   if (!force && remoteHash === localHash) {
-    console.log('SphyxOS is already up to date (hash unchanged).');
+    console.log(`SphyxOS (${channel}) is already up to date (hash unchanged).`);
     return;
   }
 
-  console.log(localHash === null ? 'No local version recorded, fetching manifest...' : 'Update available, fetching manifest...');
+  console.log(localHash === null ? `No local ${channel} version recorded, fetching manifest...` : `Update available on ${channel}, fetching manifest...`);
   const manifest = JSON.parse(await get(MANIFEST_URL));
 
   let added = 0, changed = 0, unchanged = 0;
