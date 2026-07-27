@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import {NS} from "@ns";
 
 const LOG_PORT = 19;
 const successServers: string[] = [];
@@ -98,19 +98,15 @@ export async function main(ns: NS): Promise<void> {
                 // 1. Check if model has a fixed, known cached password (excluding instance-specific models)
                 if (staticPasswordCache[details.modelId] !== undefined) {
                     passwordToTry = staticPasswordCache[details.modelId];
-                }
-                else if (details.modelId === "DeskMemo_3.1") {
+                } else if (details.modelId === "DeskMemo_3.1") {
                     // DeskMemo is instance-specific; extract key directly from hint per server
                     const keyMatch = details.passwordHint.match(/key is ([0-9]+)/i);
                     passwordToTry = keyMatch ? keyMatch[1] : details.passwordHint.replace(/[^0-9]/g, "");
-                }
-                else if (details.modelId === "PHP 5.4") {
+                } else if (details.modelId === "PHP 5.4") {
                     passwordToTry = details.data ? details.data.toString() : details.passwordHint.replace(/[^0-9]/g, "");
-                }
-                else if (details.modelId === "CloudBlare(tm)") {
+                } else if (details.modelId === "CloudBlare(tm)") {
                     passwordToTry = details.data ? details.data.replace(/[^0-9]/g, "") : "";
-                }
-                else if (details.modelId === "FreshInstall_1.0" || details.modelId === "byte.genesis") {
+                } else if (details.modelId === "FreshInstall_1.0" || details.modelId === "byte.genesis") {
                     const defaultCandidates = details.passwordHint.toLowerCase().includes("default")
                         ? ["default", "password", "12345", "admin", "0000"]
                         : ["password", "default", "12345", "admin", "0000"];
@@ -123,8 +119,7 @@ export async function main(ns: NS): Promise<void> {
                         }
                     }
                     passwordToTry = details.passwordHint.toLowerCase().includes("default") ? "default" : "password";
-                }
-                else if (details.modelId === "Laika4") {
+                } else if (details.modelId === "Laika4") {
                     const candidates = ["laika", "Laika", "LAIKA", "dog", "puppy"];
                     for (const c of candidates) {
                         const res = await ns.dnet.authenticate(neighbor, c);
@@ -134,8 +129,7 @@ export async function main(ns: NS): Promise<void> {
                             break;
                         }
                     }
-                }
-                else if (details.modelId === "OpenWebAccessPoint") {
+                } else if (details.modelId === "OpenWebAccessPoint") {
                     const candidatePool = [
                         details.data ? details.data.toString() : "",
                         details.passwordHint,
@@ -151,12 +145,10 @@ export async function main(ns: NS): Promise<void> {
                         }
                     }
                     passwordToTry = details.data ? details.data.toString() : details.passwordHint;
-                }
-                else if (details.modelId === "Pr0verFl0") {
+                } else if (details.modelId === "Pr0verFl0") {
                     const match = details.passwordHint.match(/([0-9]+)\s*bytes/i);
                     passwordToTry = match ? match[1] : (details.data ? details.data.toString() : details.passwordHint.replace(/[^0-9]/g, ""));
-                }
-                else if (details.modelId === "AccountsManager_4.2") {
+                } else if (details.modelId === "AccountsManager_4.2") {
                     const matches = details.passwordHint.match(/between\s+([0-9]+)\s+and\s+([0-9]+)/i);
                     const min = matches ? parseInt(matches[1]) : 0;
                     const max = matches ? parseInt(matches[2]) : 100;
@@ -167,8 +159,7 @@ export async function main(ns: NS): Promise<void> {
                             break;
                         }
                     }
-                }
-                else if (details.modelId === "OctantVoxel") {
+                } else if (details.modelId === "OctantVoxel") {
                     const baseMatch = details.passwordHint.match(/base\s+([0-9]+)\s+number\s+([0-9a-zA-Z]+)/i);
                     if (baseMatch) {
                         const radix = parseInt(baseMatch[1]);
@@ -177,8 +168,7 @@ export async function main(ns: NS): Promise<void> {
                     } else {
                         passwordToTry = details.data ? details.data.toString() : details.passwordHint.replace(/[^0-9]/g, "");
                     }
-                }
-                else if (details.modelId === "Factori-Os") {
+                } else if (details.modelId === "Factori-Os") {
                     const match = details.passwordHint.match(/divisible by\s+([0-9]+)/i);
                     const baseFactor = match ? parseInt(match[1]) : 1;
                     for (let i = 1; i <= 100; i++) {
@@ -189,8 +179,7 @@ export async function main(ns: NS): Promise<void> {
                             break;
                         }
                     }
-                }
-                else if (details.modelId === "NIL") {
+                } else if (details.modelId === "NIL") {
                     const nilCandidates = ["nil", "none", "null", ""];
                     for (const nc of nilCandidates) {
                         const res = await ns.dnet.authenticate(neighbor, nc);
@@ -201,11 +190,9 @@ export async function main(ns: NS): Promise<void> {
                         }
                     }
                     passwordToTry = "nil";
-                }
-                else if (details.modelId === "DeepGreen" || details.modelId === "BellaCuore") {
+                } else if (details.modelId === "DeepGreen" || details.modelId === "BellaCuore") {
                     passwordToTry = details.data ? details.data.toString() : details.passwordHint.replace(/[^0-9]/g, "");
-                }
-                else {
+                } else {
                     passwordToTry = details.passwordHint.trim();
                 }
 
@@ -223,7 +210,7 @@ export async function main(ns: NS): Promise<void> {
                         }
                     } else {
                         // Enhanced Heartbleed memory leak analyzer for hints, formats, and tokens
-                        const leak = await ns.dnet.heartbleed(neighbor, { peek: true });
+                        const leak = await ns.dnet.heartbleed(neighbor, {peek: true});
                         if (leak && leak.logs && leak.logs.length > 0) {
                             for (const logLine of leak.logs) {
                                 if (logLine.includes("401") || logLine.includes("passwordAttempted") || logLine.includes("Auth failed")) {

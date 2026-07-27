@@ -1,6 +1,6 @@
-import { NS } from "@ns";
-import { scanAllServers } from "lib/network-scan";
-import { planBatch } from "lib/hwgw-batch";
+import {NS} from "@ns";
+import {scanAllServers} from "lib/network-scan";
+import {planBatch} from "lib/hwgw-batch";
 
 export const ACTION_SCRIPT = "HackRelated/hwgw-action.js";
 
@@ -28,7 +28,7 @@ function allocateThreads(
 
         const threadsHere = Math.min(remaining, Math.floor(availableRam / scriptRam));
         if (threadsHere > 0) {
-            allocation.push({ server, threads: threadsHere });
+            allocation.push({server, threads: threadsHere});
             remaining -= threadsHere;
         }
     }
@@ -62,7 +62,7 @@ export async function main(ns: NS): Promise<void> {
         let launched = 0;
         for (const step of plan.steps) {
             const allocation = allocateThreads(ns, servers, scriptRam, step.threads, home);
-            for (const { server, threads } of allocation) {
+            for (const {server, threads} of allocation) {
                 const pid = ns.exec(ACTION_SCRIPT, server, threads, target, step.action, step.delayMs);
                 if (pid > 0) launched++;
             }

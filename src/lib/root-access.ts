@@ -1,11 +1,11 @@
-import { NS } from "@ns";
+import {NS} from "@ns";
 
 const PORT_OPENERS: { file: string; run: (ns: NS, host: string) => boolean }[] = [
-    { file: "BruteSSH.exe", run: (ns, host) => ns.brutessh(host) },
-    { file: "FTPCrack.exe", run: (ns, host) => ns.ftpcrack(host) },
-    { file: "relaySMTP.exe", run: (ns, host) => ns.relaysmtp(host) },
-    { file: "HTTPWorm.exe", run: (ns, host) => ns.httpworm(host) },
-    { file: "SQLInject.exe", run: (ns, host) => ns.sqlinject(host) }
+    {file: "BruteSSH.exe", run: (ns, host) => ns.brutessh(host)},
+    {file: "FTPCrack.exe", run: (ns, host) => ns.ftpcrack(host)},
+    {file: "relaySMTP.exe", run: (ns, host) => ns.relaysmtp(host)},
+    {file: "HTTPWorm.exe", run: (ns, host) => ns.httpworm(host)},
+    {file: "SQLInject.exe", run: (ns, host) => ns.sqlinject(host)}
 ];
 
 /** Runs every port opener the player currently owns against target. Returns how many ports were opened. */

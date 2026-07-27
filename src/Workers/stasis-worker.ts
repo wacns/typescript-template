@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import {NS} from "@ns";
 
 const LOG_PORT = 19;
 const home = "home";

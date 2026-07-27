@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import {NS} from "@ns";
 
 /**
  * BFS-scans the whole network reachable from home, returning every hostname found (including home),

@@ -1,7 +1,7 @@
-import { NS } from "@ns";
-import { openAvailablePorts } from "lib/root-access";
-import { scanAllServers } from "lib/network-scan";
-import { ACTION_SCRIPT } from "Dispatchers/hwgw-batcher";
+import {NS} from "@ns";
+import {openAvailablePorts} from "lib/root-access";
+import {scanAllServers} from "lib/network-scan";
+import {ACTION_SCRIPT} from "Dispatchers/hwgw-batcher";
 
 /** @param {NS} ns */
 export async function main(ns: NS) {
@@ -245,7 +245,7 @@ export async function main(ns: NS) {
             ns.print(`🎯 Current Target : ${currentTarget}`);
             const payloadLabel = currentPayload === BATCHER_PAYLOAD ? "hwgw-batcher (prepped)"
                 : currentPayload === FORMULA_PAYLOAD ? "formula-worker (prepping)"
-                : "worker (heuristic)";
+                    : "worker (heuristic)";
             ns.print(`🧮 Payload        : ${payloadLabel}`);
             ns.print(`⏳ Hack Cycle     : ${formattedCycleTime}`);
             ns.print(`🖥️ Rooted Servers : ${rootedCount} / ${knownServers.length}`);

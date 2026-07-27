@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import {NS} from "@ns";
 
 const MIN_RAM_EXP = 1; // lowest RAM a cloud server can be purchased with is 2**1 GB
 const MAX_RAM_EXP = 20; // highest RAM a cloud server can have is 2**20 GB
@@ -7,7 +7,10 @@ const MAX_RAM_EXP = 20; // highest RAM a cloud server can have is 2**20 GB
  * Steps a server's RAM through 2**x for x = 1..20, applying every upgrade that's affordable, up to maxRam.
  * @returns the RAM the server ended up with, and the money left over after all affordable upgrades.
  */
-function upgradeToMax(ns: NS, server: string, currentRam: number, maxRam: number, money: number): { finalRam: number, money: number } {
+function upgradeToMax(ns: NS, server: string, currentRam: number, maxRam: number, money: number): {
+    finalRam: number,
+    money: number
+} {
     let ram = currentRam;
 
     for (let x = MIN_RAM_EXP; x <= MAX_RAM_EXP; x++) {
@@ -31,7 +34,7 @@ function upgradeToMax(ns: NS, server: string, currentRam: number, maxRam: number
         ram = nextRam;
     }
 
-    return { finalRam: ram, money };
+    return {finalRam: ram, money};
 }
 
 export async function main(ns: NS): Promise<void> {
@@ -53,10 +56,10 @@ export async function main(ns: NS): Promise<void> {
     let money = ns.getServerMoneyAvailable("home");
 
     const serverNames = ns.cloud.getServerNames()
-        .map(server => ({ server, ram: ns.getServerMaxRam(server) }))
+        .map(server => ({server, ram: ns.getServerMaxRam(server)}))
         .sort((a, b) => a.ram - b.ram); // weakest servers first
 
-    for (const { server, ram } of serverNames) {
+    for (const {server, ram} of serverNames) {
         const result = upgradeToMax(ns, server, ram, maxRam, money);
         money = result.money;
 

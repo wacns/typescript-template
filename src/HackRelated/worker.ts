@@ -1,5 +1,5 @@
-import { NS } from "@ns";
-import { runHackLoop } from "lib/hack-loop";
+import {NS} from "@ns";
+import {runHackLoop} from "lib/hack-loop";
 
 /** @param {NS} ns */
 export async function main(ns: NS) {

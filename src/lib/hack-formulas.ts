@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import {NS} from "@ns";
 
 /**
  * Formulas.exe is a purchasable program, not a permanent unlock - if it's ever missing (never bought,
@@ -35,7 +35,7 @@ export function computeHackThresholds(ns: NS, target: string): HackThresholds | 
         // Keep enough buffer above what one hack pass at this thread count is expected to remove.
         const moneyThresh = ns.getServerMaxMoney(target) * Math.max(0.5, 1 - expectedHackRemoval * 1.5);
 
-        return { securityThresh, moneyThresh };
+        return {securityThresh, moneyThresh};
     } catch {
         return null;
     }

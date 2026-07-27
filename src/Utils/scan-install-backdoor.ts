@@ -1,5 +1,5 @@
-import { NS } from "@ns";
-import { ensureRootAccess } from "lib/root-access";
+import {NS} from "@ns";
+import {ensureRootAccess} from "lib/root-access";
 
 async function tryBackdoor(ns: NS, target: string): Promise<void> {
     const server = ns.getServer(target);

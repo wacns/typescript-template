@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import {NS} from "@ns";
 
 /** Weakens/grows/hacks target forever, keeping security near its floor and money near its cap. */
 export async function runHackLoop(ns: NS, target: string): Promise<void> {

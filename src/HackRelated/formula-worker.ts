@@ -1,6 +1,6 @@
-import { NS } from "@ns";
-import { runHackLoop } from "lib/hack-loop";
-import { hasFormulas, computeHackThresholds } from "lib/hack-formulas";
+import {NS} from "@ns";
+import {runHackLoop} from "lib/hack-loop";
+import {hasFormulas, computeHackThresholds} from "lib/hack-formulas";
 
 /**
  * Same weaken/grow/hack loop as worker.ts, but with thresholds computed from ns.formulas.hacking

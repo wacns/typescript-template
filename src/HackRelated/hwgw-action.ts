@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import {NS} from "@ns";
 
 /** One-shot hack/grow/weaken with a built-in completion delay, launched by hwgw-batcher.ts. */
 export async function main(ns: NS): Promise<void> {
@@ -7,10 +7,10 @@ export async function main(ns: NS): Promise<void> {
     const delayMs = Math.max(0, Number(ns.args[2] ?? 0));
 
     if (action === "hack") {
-        await ns.hack(target, { additionalMsec: delayMs });
+        await ns.hack(target, {additionalMsec: delayMs});
     } else if (action === "grow") {
-        await ns.grow(target, { additionalMsec: delayMs });
+        await ns.grow(target, {additionalMsec: delayMs});
     } else if (action === "weaken") {
-        await ns.weaken(target, { additionalMsec: delayMs });
+        await ns.weaken(target, {additionalMsec: delayMs});
     }
 }

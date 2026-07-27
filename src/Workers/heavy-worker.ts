@@ -1,5 +1,5 @@
-import { NS } from "@ns";
-import { tryPasswords, SMALL_PRIMES } from "lib/dnet-auth";
+import {NS} from "@ns";
+import {tryPasswords, SMALL_PRIMES} from "lib/dnet-auth";
 
 // Factori-Os passwords are built by the game as (a random base) * (a handful of small-prime/1-5 factors),
 // scaled by server difficulty. Reproducing that structure gives a far smaller, far more accurate candidate
@@ -34,7 +34,7 @@ function buildFactoriosCandidates(difficulty: number): string[] {
 /** Reads server logs via heartbleed, looking for a password the server occasionally leaks in its own noise. */
 async function sniffLeakedPassword(ns: NS, neighbor: string, attempts = 5): Promise<string | null> {
     for (let i = 0; i < attempts; i++) {
-        const res = await ns.dnet.heartbleed(neighbor, { logsToCapture: 10 });
+        const res = await ns.dnet.heartbleed(neighbor, {logsToCapture: 10});
         if (!res.success) return null;
 
         for (const line of res.logs) {
@@ -123,24 +123,21 @@ export async function main(ns: NS): Promise<void> {
 
             if (details.modelId === "Factori-Os") {
                 candidates = buildFactoriosCandidates(details.difficulty);
-            }
-            else if (details.modelId === "OpenWebAccessPoint") {
+            } else if (details.modelId === "OpenWebAccessPoint") {
                 if (details.requiredCharismaSkill <= ns.getPlayer().skills.charisma) {
                     const leaked = await sniffLeakedPassword(ns, neighbor);
                     if (leaked !== null) {
                         candidates = [leaked];
                     }
                 }
-            }
-            else if (details.modelId === "NIL") {
+            } else if (details.modelId === "NIL") {
                 if (details.passwordLength > 0) {
                     const solved = await solveYesnt(ns, neighbor, details.passwordLength, details.passwordFormat === "numeric");
                     if (solved !== null) {
                         candidates = [solved];
                     }
                 }
-            }
-            else if (details.modelId === "2G_cellular") {
+            } else if (details.modelId === "2G_cellular") {
                 if (details.passwordLength > 0) {
                     const solved = await solveTimingAttack(ns, neighbor, details.passwordLength, details.passwordFormat === "numeric");
                     if (solved !== null) {

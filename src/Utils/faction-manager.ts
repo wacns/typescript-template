@@ -1,5 +1,5 @@
-import { NS } from "@ns";
-import { ALL_FACTIONS, describeRequirement, tryAutoSatisfy } from "lib/faction-requirements";
+import {NS} from "@ns";
+import {ALL_FACTIONS, describeRequirement, tryAutoSatisfy} from "lib/faction-requirements";
 
 export async function main(ns: NS): Promise<void> {
     ns.disableLog("ALL");

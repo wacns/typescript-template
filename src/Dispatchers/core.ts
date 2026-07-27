@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import {NS} from "@ns";
 import {
     tryPasswords, decodeBaseN, decodeBinaryAscii, decodeXorMask, stripSmallPrimeFactors,
     parseSafeArithmeticExpression, COMMON_PASSWORD_DICTIONARY, EU_COUNTRIES, maxThreadsFor, romanToInt
@@ -34,6 +34,7 @@ function generatePermutations(chars: string): string[] {
             used[i] = false;
         }
     }
+
     backtrack();
 
     return Array.from(results);
@@ -104,8 +105,7 @@ async function lightweightAuthenticate(ns: NS, neighbor: string, sendLog: (msg: 
 
     if (details.modelId === "ZeroLogon") {
         passwordsToTry = [""];
-    }
-    else if (details.modelId === "FreshInstall_1.0" || details.modelId === "byte.genesis") {
+    } else if (details.modelId === "FreshInstall_1.0" || details.modelId === "byte.genesis") {
         const hintLower = details.passwordHint.toLowerCase();
         passwordsToTry = [
             hintLower.includes("factory") ? "factory" : "",
@@ -113,31 +113,24 @@ async function lightweightAuthenticate(ns: NS, neighbor: string, sendLog: (msg: 
             hintLower.includes("default") ? "default" : "",
             "password", "default", "factory", "settings", "admin", "root", "12345", "0000"
         ].filter(Boolean);
-    }
-    else if (details.modelId === "DeskMemo_3.1") {
+    } else if (details.modelId === "DeskMemo_3.1") {
         const m = details.passwordHint.match(/(?:key is|secret is|PIN is|use|shuffled)\s*([0-9]+)/i);
         passwordsToTry = [m ? m[1] : details.passwordHint.replace(/[^0-9]/g, "")];
-    }
-    else if (details.modelId === "CloudBlare(tm)") {
+    } else if (details.modelId === "CloudBlare(tm)") {
         passwordsToTry = [details.data ? details.data.replace(/[^0-9]/g, "") : ""];
-    }
-    else if (details.modelId === "Laika4") {
+    } else if (details.modelId === "Laika4") {
         // Fixed 4-entry dictionary, no hint-derivable info: fido, spot, rover, max.
         passwordsToTry = ["fido", "spot", "rover", "max"];
-    }
-    else if (details.modelId === "TopPass") {
+    } else if (details.modelId === "TopPass") {
         passwordsToTry = COMMON_PASSWORD_DICTIONARY;
-    }
-    else if (details.modelId === "EuroZone Free") {
+    } else if (details.modelId === "EuroZone Free") {
         passwordsToTry = EU_COUNTRIES;
-    }
-    else if (details.modelId === "110100100") {
+    } else if (details.modelId === "110100100") {
         // details.data is space-separated 8-bit binary ASCII codes, e.g. "01100001 01100010".
         if (details.data) {
             passwordsToTry = [decodeBinaryAscii(details.data)];
         }
-    }
-    else if (details.modelId === "OrdoXenos") {
+    } else if (details.modelId === "OrdoXenos") {
         // details.data is "xorMaskedCiphertext;mask1 mask2 ..." (each mask an 8-bit binary string).
         if (details.data) {
             const decoded = decodeXorMask(details.data);
@@ -145,14 +138,12 @@ async function lightweightAuthenticate(ns: NS, neighbor: string, sendLog: (msg: 
                 passwordsToTry = [decoded];
             }
         }
-    }
-    else if (details.modelId === "PrimeTime 2") {
+    } else if (details.modelId === "PrimeTime 2") {
         // details.data is largestPrime * (product of small primes); stripping the small-prime factors leaves the answer.
         if (details.data) {
             passwordsToTry = [stripSmallPrimeFactors(details.data)];
         }
-    }
-    else if (details.modelId === "MathML") {
+    } else if (details.modelId === "MathML") {
         // details.data is an arithmetic expression (possibly with obfuscated operators and an injected
         // ", ns.exit()" payload); parseSafeArithmeticExpression strips that instead of eval()-ing it directly.
         if (details.data) {
@@ -161,44 +152,38 @@ async function lightweightAuthenticate(ns: NS, neighbor: string, sendLog: (msg: 
                 passwordsToTry = [result.toString()];
             }
         }
-    }
-    else if (details.modelId === "Pr0verFl0") {
+    } else if (details.modelId === "Pr0verFl0") {
         // BufferOverflow: the check compares the attempt's first half against its second half once the
         // attempt is >= 2x the password length, not against the real password. Any 2n-length string made
         // of one repeated character trivially satisfies that, so this always succeeds in a single guess.
         if (details.passwordLength > 0) {
             passwordsToTry = ["a".repeat(details.passwordLength * 2)];
         }
-    }
-    else if (details.modelId === "AccountsManager_4.2") {
+    } else if (details.modelId === "AccountsManager_4.2") {
         // Bounded numeric range brute force (e.g. "between 0 and 10"), cheap enough for every node.
         const matches = details.passwordHint.match(/between\s+([0-9]+)\s+and\s+([0-9]+)/i);
         const min = matches ? parseInt(matches[1]) : 0;
         const max = matches ? parseInt(matches[2]) : 100;
-        passwordsToTry = Array.from({ length: max - min + 1 }, (_, i) => (min + i).toString());
-    }
-    else if (details.modelId === "BellaCuore") {
+        passwordsToTry = Array.from({length: max - min + 1}, (_, i) => (min + i).toString());
+    } else if (details.modelId === "BellaCuore") {
         // Deterministic single guess: parse the Roman numeral straight out of the hint text.
         const romanMatch = details.passwordHint.match(/\b([IVXLCDMivxlcdm]+)\b/);
         if (romanMatch) {
             passwordsToTry = [romanToInt(romanMatch[1]).toString()];
         }
-    }
-    else if (details.modelId === "PHP 5.4") {
+    } else if (details.modelId === "PHP 5.4") {
         // SortedEchoVuln: details.data is the password's digits sorted; brute-force its permutations.
         if (details.data) {
             passwordsToTry = generatePermutations(details.data);
         }
-    }
-    else if (details.modelId === "DeepGreen") {
+    } else if (details.modelId === "DeepGreen") {
         if (details.passwordFormat === "numeric" && details.passwordLength > 0 && details.passwordLength <= MAX_MASTERMIND_LENGTH) {
             const solved = await solveMastermind(ns, neighbor, details.passwordLength);
             if (solved !== null) {
                 passwordsToTry = [solved];
             }
         }
-    }
-    else if (details.modelId === "OctantVoxel") {
+    } else if (details.modelId === "OctantVoxel") {
         // details.data is "base,encodedValue" (e.g. "2,11001110"); base can be fractional on harder servers.
         const [baseStr, encoded] = (details.data ?? "").split(",");
         const base = Number(baseStr);
@@ -208,8 +193,7 @@ async function lightweightAuthenticate(ns: NS, neighbor: string, sendLog: (msg: 
                 passwordsToTry = [decoded.toString()];
             }
         }
-    }
-    else {
+    } else {
         const numMatch = details.passwordHint.match(/([0-9]+)/);
         passwordsToTry = numMatch ? [numMatch[1], "password"] : ["password", "default", "admin"];
     }

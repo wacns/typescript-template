@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import {NS} from "@ns";
 
 const LOG_PORT = 19;
 const successServers: string[] = [];
@@ -14,7 +14,7 @@ const staticPasswordCache: { [modelId: string]: string } = {
 
 // Roman numeral translation helper for BellaCuore
 function romanToInt(s: string): number {
-    const map: { [key: string]: number } = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+    const map: { [key: string]: number } = {I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000};
     let result = 0;
     for (let i = 0; i < s.length; i++) {
         const current = map[s[i].toUpperCase()];
@@ -43,15 +43,12 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
 
             if (details.modelId === "ZeroLogon") {
                 passwordToTry = "";
-            }
-            else if (staticPasswordCache[details.modelId] !== undefined) {
+            } else if (staticPasswordCache[details.modelId] !== undefined) {
                 passwordToTry = staticPasswordCache[details.modelId];
-            }
-            else if (details.modelId === "DeskMemo_3.1") {
+            } else if (details.modelId === "DeskMemo_3.1") {
                 const keyMatch = details.passwordHint.match(/key is ([0-9]+)/i);
                 passwordToTry = keyMatch ? keyMatch[1] : details.passwordHint.replace(/[^0-9]/g, "");
-            }
-            else if (details.modelId === "PHP 5.4") {
+            } else if (details.modelId === "PHP 5.4") {
                 const rawDigits = details.data ? details.data.toString() : details.passwordHint.replace(/[^0-9]/g, "");
                 const pinCandidates = [rawDigits, `0${rawDigits}`, `${rawDigits}0`, rawDigits.split("").reverse().join("")];
                 for (const pin of pinCandidates) {
@@ -65,11 +62,9 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                     }
                 }
                 passwordToTry = rawDigits;
-            }
-            else if (details.modelId === "CloudBlare(tm)") {
+            } else if (details.modelId === "CloudBlare(tm)") {
                 passwordToTry = details.data ? details.data.replace(/[^0-9]/g, "") : "";
-            }
-            else if (details.modelId === "FreshInstall_1.0" || details.modelId === "byte.genesis") {
+            } else if (details.modelId === "FreshInstall_1.0" || details.modelId === "byte.genesis") {
                 const hintLower = details.passwordHint.toLowerCase();
                 const hintWords = details.passwordHint.match(/\b[a-zA-Z0-9]+\b/g) || [];
                 const defaultCandidates = [
@@ -97,8 +92,7 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                     }
                 }
                 if (!alreadyAuthenticated) passwordToTry = uniqueCandidates[0];
-            }
-            else if (details.modelId === "Laika4") {
+            } else if (details.modelId === "Laika4") {
                 const candidates = ["laika", "Laika", "LAIKA", "dog", "puppy"];
                 for (const c of candidates) {
                     const res = await ns.dnet.authenticate(neighbor, c);
@@ -110,8 +104,7 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                         break;
                     }
                 }
-            }
-            else if (details.modelId === "OpenWebAccessPoint") {
+            } else if (details.modelId === "OpenWebAccessPoint") {
                 const candidatePool = [
                     details.data ? details.data.toString() : "",
                     details.passwordHint,
@@ -128,8 +121,7 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                     }
                 }
                 passwordToTry = details.data ? details.data.toString() : details.passwordHint;
-            }
-            else if (details.modelId === "BellaCuore") {
+            } else if (details.modelId === "BellaCuore") {
                 const romanMatch = details.passwordHint.match(/\b([IVXLCDMivxlcdm]+)\b/);
                 if (romanMatch) {
                     const val = romanToInt(romanMatch[1]);
@@ -138,12 +130,10 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                 } else {
                     passwordToTry = details.data ? details.data.toString() : details.passwordHint.replace(/[^0-9]/g, "");
                 }
-            }
-            else if (details.modelId === "Pr0verFl0") {
+            } else if (details.modelId === "Pr0verFl0") {
                 const match = details.passwordHint.match(/([0-9]+)\s*bytes/i);
                 passwordToTry = match ? match[1] : (details.data ? details.data.toString() : details.passwordHint.replace(/[^0-9]/g, ""));
-            }
-            else if (details.modelId === "AccountsManager_4.2") {
+            } else if (details.modelId === "AccountsManager_4.2") {
                 const matches = details.passwordHint.match(/between\s+([0-9]+)\s+and\s+([0-9]+)/i);
                 const min = matches ? parseInt(matches[1]) : 0;
                 const max = matches ? parseInt(matches[2]) : 100;
@@ -156,8 +146,7 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                         break;
                     }
                 }
-            }
-            else if (details.modelId === "OctantVoxel") {
+            } else if (details.modelId === "OctantVoxel") {
                 if (details.data && details.data.includes(",")) {
                     const parts = details.data.split(",");
                     const radix = parseInt(parts[0].trim());
@@ -173,8 +162,7 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                         passwordToTry = details.data ? details.data.toString() : details.passwordHint.replace(/[^0-9]/g, "");
                     }
                 }
-            }
-            else if (details.modelId === "Factori-Os") {
+            } else if (details.modelId === "Factori-Os") {
                 const match = details.passwordHint.match(/divisible by\s+([0-9]+)/i);
                 const baseFactor = match ? parseInt(match[1]) : 1;
                 for (let i = 1; i <= 1000; i++) {
@@ -187,8 +175,7 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                         break;
                     }
                 }
-            }
-            else if (details.modelId === "NIL") {
+            } else if (details.modelId === "NIL") {
                 const nilCandidates = ["nil", "none", "null", "", "unauthorized"];
                 for (const nc of nilCandidates) {
                     const res = await ns.dnet.authenticate(neighbor, nc);
@@ -200,8 +187,7 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                     }
                 }
                 passwordToTry = "nil";
-            }
-            else if (details.modelId === "DeepGreen") {
+            } else if (details.modelId === "DeepGreen") {
                 // Brute-force common 4-digit or short combinations for Mastermind model
                 for (let i = 0; i < 10000; i++) {
                     const candidate = i.toString().padStart(4, "0");
@@ -214,8 +200,7 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                     }
                 }
                 passwordToTry = "0000";
-            }
-            else {
+            } else {
                 passwordToTry = details.passwordHint.trim();
             }
 
@@ -228,7 +213,7 @@ async function authenticateAndInfect(ns: NS, neighbor: string, scriptName: strin
                         staticPasswordCache[details.modelId] = passwordToTry;
                     }
                 } else {
-                    const leak = await ns.dnet.heartbleed(neighbor, { peek: true });
+                    const leak = await ns.dnet.heartbleed(neighbor, {peek: true});
                     if (leak && leak.logs && leak.logs.length > 0) {
                         for (const logLine of leak.logs) {
                             if (logLine.includes("401") || logLine.includes("passwordAttempted") || logLine.includes("Auth failed")) {

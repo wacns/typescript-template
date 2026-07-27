@@ -1,4 +1,4 @@
-import { NS, PlayerRequirement } from "@ns";
+import {NS, PlayerRequirement} from "@ns";
 
 // FactionName isn't an exported type in NetscriptDefinitions.d.ts, so derive it from joinFaction's own signature.
 type FactionNameType = Parameters<NS["singularity"]["joinFaction"]>[0];
@@ -95,28 +95,50 @@ export function isSatisfied(ns: NS, req: PlayerRequirement): boolean {
 
 export function describeRequirement(req: PlayerRequirement): string {
     switch (req.type) {
-        case "money": return `$${req.money.toLocaleString()}`;
-        case "skills": return Object.entries(req.skills).map(([s, n]) => `${s} ${n}`).join(", ");
-        case "karma": return `karma <= ${req.karma}`;
-        case "numPeopleKilled": return `${req.numPeopleKilled} people killed`;
-        case "file": return `file '${req.file}'`;
-        case "numAugmentations": return `${req.numAugmentations} augmentations installed`;
-        case "employedBy": return `employed at ${req.company}`;
-        case "companyReputation": return `${req.reputation} reputation with ${req.company}`;
-        case "jobTitle": return `job title '${req.jobTitle}'`;
-        case "city": return `located in ${req.city}`;
-        case "location": return `located at ${req.location}`;
-        case "backdoorInstalled": return `backdoor on ${req.server}`;
-        case "hacknetRAM": return `${req.hacknetRAM}GB total Hacknet RAM`;
-        case "hacknetCores": return `${req.hacknetCores} total Hacknet cores`;
-        case "hacknetLevels": return `${req.hacknetLevels} total Hacknet levels`;
-        case "bitNodeN": return `in BitNode ${req.bitNodeN}`;
-        case "sourceFile": return `Source-File ${req.sourceFile}`;
-        case "bladeburnerRank": return `Bladeburner rank ${req.bladeburnerRank}`;
-        case "numInfiltrations": return `${req.numInfiltrations} infiltrations (can't auto-verify)`;
-        case "not": return `NOT (${describeRequirement(req.condition)})`;
-        case "someCondition": return `(${req.conditions.map(describeRequirement).join(" OR ")})`;
-        case "everyCondition": return req.conditions.map(describeRequirement).join(", ");
+        case "money":
+            return `$${req.money.toLocaleString()}`;
+        case "skills":
+            return Object.entries(req.skills).map(([s, n]) => `${s} ${n}`).join(", ");
+        case "karma":
+            return `karma <= ${req.karma}`;
+        case "numPeopleKilled":
+            return `${req.numPeopleKilled} people killed`;
+        case "file":
+            return `file '${req.file}'`;
+        case "numAugmentations":
+            return `${req.numAugmentations} augmentations installed`;
+        case "employedBy":
+            return `employed at ${req.company}`;
+        case "companyReputation":
+            return `${req.reputation} reputation with ${req.company}`;
+        case "jobTitle":
+            return `job title '${req.jobTitle}'`;
+        case "city":
+            return `located in ${req.city}`;
+        case "location":
+            return `located at ${req.location}`;
+        case "backdoorInstalled":
+            return `backdoor on ${req.server}`;
+        case "hacknetRAM":
+            return `${req.hacknetRAM}GB total Hacknet RAM`;
+        case "hacknetCores":
+            return `${req.hacknetCores} total Hacknet cores`;
+        case "hacknetLevels":
+            return `${req.hacknetLevels} total Hacknet levels`;
+        case "bitNodeN":
+            return `in BitNode ${req.bitNodeN}`;
+        case "sourceFile":
+            return `Source-File ${req.sourceFile}`;
+        case "bladeburnerRank":
+            return `Bladeburner rank ${req.bladeburnerRank}`;
+        case "numInfiltrations":
+            return `${req.numInfiltrations} infiltrations (can't auto-verify)`;
+        case "not":
+            return `NOT (${describeRequirement(req.condition)})`;
+        case "someCondition":
+            return `(${req.conditions.map(describeRequirement).join(" OR ")})`;
+        case "everyCondition":
+            return req.conditions.map(describeRequirement).join(", ");
     }
 }
 

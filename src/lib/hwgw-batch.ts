@@ -1,5 +1,5 @@
-import { NS, Server } from "@ns";
-import { hasFormulas } from "lib/hack-formulas";
+import {NS, Server} from "@ns";
+import {hasFormulas} from "lib/hack-formulas";
 
 export interface BatchStep {
     action: "hack" | "grow" | "weaken";
@@ -49,7 +49,7 @@ export function planBatch(ns: NS, target: string): BatchPlan | null {
         const weaken1Threads = Math.max(1, Math.ceil(hackSecurityIncrease / weakenPerThread));
 
         const moneyAfterHack = Math.max(1, maxMoney * (1 - HACK_FRACTION));
-        const postHackServer: Server = { ...server, moneyAvailable: moneyAfterHack };
+        const postHackServer: Server = {...server, moneyAvailable: moneyAfterHack};
         const growThreads = Math.max(1, Math.ceil(ns.formulas.hacking.growThreads(postHackServer, player, maxMoney)));
 
         const growSecurityIncrease = ns.growthAnalyzeSecurity(growThreads, target);
@@ -65,13 +65,13 @@ export function planBatch(ns: NS, target: string): BatchPlan | null {
         );
 
         const steps: BatchStep[] = [
-            { action: "hack", threads: hackThreads, delayMs: T0 - hackTime },
-            { action: "weaken", threads: weaken1Threads, delayMs: T0 + SPACING_MS - weakenTime },
-            { action: "grow", threads: growThreads, delayMs: T0 + 2 * SPACING_MS - growTime },
-            { action: "weaken", threads: weaken2Threads, delayMs: T0 + 3 * SPACING_MS - weakenTime }
+            {action: "hack", threads: hackThreads, delayMs: T0 - hackTime},
+            {action: "weaken", threads: weaken1Threads, delayMs: T0 + SPACING_MS - weakenTime},
+            {action: "grow", threads: growThreads, delayMs: T0 + 2 * SPACING_MS - growTime},
+            {action: "weaken", threads: weaken2Threads, delayMs: T0 + 3 * SPACING_MS - weakenTime}
         ];
 
-        return { steps, cycleTimeMs: T0 + 4 * SPACING_MS };
+        return {steps, cycleTimeMs: T0 + 4 * SPACING_MS};
     } catch {
         return null;
     }
