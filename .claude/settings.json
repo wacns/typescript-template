@@ -1,5 +1,18 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' | tr -d '\\r' | tr '\\\\' '/' | { read -r f; case \"$f\" in *NetscriptDefinitions.d.ts|*/All-Game-Files-And-Documentations/*) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Read-only reference/generated file - do not edit. NetscriptDefinitions.d.ts is game-generated (filesync overwrites it); All-Game-Files-And-Documentations/ is a read-only local checkout of the Bitburner source kept for formula/API lookups only.\"}}' ;; esac; }",
+            "timeout": 10,
+            "statusMessage": "Checking edit target..."
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
