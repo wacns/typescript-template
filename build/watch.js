@@ -3,7 +3,16 @@ const path = require('node:path');
 const syncDirectory = require('sync-directory');
 const fg = require('fast-glob');
 const chokidar = require('chokidar');
-const { src, dist, allowedFiletypes } = require('./config');
+const { src, dist, staticFiletypes } = require('./config');
+
+/** Extensions tsc (allowJs + jsx: "react") compiles/copies to a same-named .js in dist. */
+const TS_SOURCE_EXTENSIONS = ['.ts', '.tsx', '.jsx', '.js'];
+
+/** True if any of src/<relative-without-.js-ext><TS_SOURCE_EXTENSIONS> exists for a dist .js file. */
+function hasMatchingSourceFile(distRelativeJsPath) {
+  const withoutExt = distRelativeJsPath.replace(/\.js$/, '');
+  return TS_SOURCE_EXTENSIONS.some((ext) => fs.existsSync(path.resolve(src, `${withoutExt}${ext}`)));
+}
 
 /** Format dist path for printing */
 function normalize(p) {
@@ -18,7 +27,7 @@ async function syncStatic() {
   return syncDirectory.async(path.resolve(src), path.resolve(dist), {
     exclude: (file) => {
       const { ext } = path.parse(file);
-      return ext && !allowedFiletypes.includes(ext);
+      return ext && !staticFiletypes.includes(ext);
     },
     async afterEachSync(event) {
       // log file action
@@ -48,14 +57,9 @@ async function syncStatic() {
 async function initTypeScript() {
   const distFiles = await fg(`${dist}/**/*.js`);
   for (const distFile of distFiles) {
-    // search existing *.js file in dist
+    // search existing source file (.ts/.tsx/.jsx/.js) in src
     const relative = path.relative(dist, distFile);
-    const srcFile = path.resolve(src, relative);
-    // if srcFile does not exist, delete distFile
-    if (
-      !fs.existsSync(srcFile) &&
-      !fs.existsSync(srcFile.replace(/\.js$/, '.ts'))
-    ) {
+    if (!hasMatchingSourceFile(relative)) {
       await fs.promises.unlink(distFile);
       console.log(`${normalize(relative)} deleted`);
     }
@@ -67,12 +71,13 @@ async function initTypeScript() {
  * Watch phase only.
  */
 async function watchTypeScript() {
-  chokidar.watch(`${src}/**/*.ts`).on('unlink', async (p) => {
-    // called on *.ts file get deleted
-    const relative = path.relative(src, p).replace(/\.ts$/, '.js');
+  chokidar.watch(`${src}/**/*.{ts,tsx,jsx,js}`).on('unlink', async (p) => {
+    // called on any tsc-managed source file (.ts/.tsx/.jsx/.js) being deleted - staticFiletypes no
+    // longer includes .js, so this is the only place plain .js source deletions get cleaned up too
+    const relative = path.relative(src, p).replace(/\.(ts|tsx|jsx|js)$/, '.js');
     const distFile = path.resolve(dist, relative);
-    // if distFile exists, delete it
-    if (fs.existsSync(distFile)) {
+    // only delete if no other source extension still maps to the same dist file
+    if (fs.existsSync(distFile) && !hasMatchingSourceFile(relative)) {
       await fs.promises.unlink(distFile);
       console.log(`${normalize(relative)} deleted`);
     }
