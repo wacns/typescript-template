@@ -241,6 +241,20 @@ export async function makeNewWindow(title = "Default Window Title", theme) {
   win.update = (content) => {
     win["document"].body.querySelector(".logs").innerHTML = win["document"].body.querySelector(".logs").innterHTML === "" ? content.replaceAll(" ", "&nbsp;").replaceAll("\r", "<br>").replaceAll("\n", "<br>") : win["document"].body.querySelector(".logs").innerHTML + `<br>` + content.replaceAll(" ", "&nbsp;").replaceAll("\r", "<br>").replaceAll("\n", "<br>");
   }
+  // Set (replace) the raw innerHTML of a target element by selector. Unlike
+  // win.update (which appends and escapes spaces/newlines), this writes markup
+  // verbatim — use it for live views like the IPvGo board. A missing "#id"
+  // target is auto-created inside the content area so callers need no setup.
+  win.setHTML = (selector, html) => {
+    const doc = win["document"];
+    let el = doc.querySelector(selector);
+    if (!el && selector.charAt(0) === "#") {
+      el = doc.createElement("div");
+      el.id = selector.slice(1);
+      (doc.querySelector(".logs") || doc.body).appendChild(el);
+    }
+    if (el) el.innerHTML = html;
+  }
   win.reopen = () => open("", title.replaceAll(" ", "_"), "popup=yes,height=200,width=500,left=100,top=100,resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,directories=no,status=no");
   win.focus()
   return win;

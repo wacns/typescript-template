@@ -1,6 +1,5 @@
 /** @param {NS} ns */
 export async function main(ns) {
-  ns.disableLog("ALL")
   let [func, ...argmnts] = ns.args
   let nsFunction = ns
   for (let prop of func.split(".")) nsFunction = nsFunction[prop]

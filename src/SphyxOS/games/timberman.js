@@ -142,7 +142,7 @@ export async function main(ns) {
   ns.writePort(29, ns.pid)
   const container = doc.createElement("div");
   doc.getElementById("root").appendChild(container);
-  globalThis["window.ReactDOM"].render(React.createElement(TimberGame), container);
+  globalThis["window"].ReactDOM.render(React.createElement(TimberGame), container);
   ns.atExit(() => {
     ns.clearPort(29)
     container.remove(); audioCtx.close();

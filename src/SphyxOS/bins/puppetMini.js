@@ -360,11 +360,12 @@ async function update_hud(ns) {
   await ns.asleep(200)
   while (true) {
     clearLogs(ns)
+    const baseHackP = Math.floor(BATCHINFO.HackP * 10000 * PREPH1) / 100
     update(ns, ns.sprintf("%s[%s] - (%s)", TARGET.hostname, BMODE, BATCHINFO.Type))
     update(ns, ns.sprintf("%s%s%s%s%s%s%s", MONEYMODE ? "Money " : "", XPMODE ? "XP " : "", PURCHASE ? "BuyServers " : "", STANEKMODE ? "Stanek " : "", USEHACKNET ? "UseHacknet " : "", AUTOBUYHACKNET ? "BuyHacknet " : "", AUTOHASH ? "AutoHash " : "", PADMODE ? "Padding " : "", LOGMODE ? "Logging " : ""))
     if (TARGET.hostname !== NEXTTARGET.hostname) update(ns, ns.sprintf("Next: %s  Zerglings: %s/%s", NEXTTARGET.hostname, ZERGSENT, ZERGREQUIRED === -1 ? "Waiting" : ZERGREQUIRED))
     update(ns, ns.sprintf("%s/%s(%s) Batches: %s  Take: $%s", THREADSMAX - THREADSLEFT, THREADSMAX, THREADSLEFT, BATCHESRUN + 1, fNumber(ns, BATCHINFO.Take * (BATCHESRUN + 1) * PREPH1 / BATCHINFO.H1)))
-    update(ns, ns.sprintf("HackP: %s%s ($%s/each)  Chance: %s%s", Math.round(BATCHINFO.HackP * 10000 * PREPH1) / 100, "%", fNumber(ns, BATCHINFO.Take * PREPH1 / BATCHINFO.H1), fNumber(ns, BATCHINFO.Chance * 100, 2), "%"))
+    update(ns, ns.sprintf("HackP: %s%s ($%s/each)  Chance: %s%s", baseHackP > 100 ? 100 : baseHackP, "%", fNumber(ns, BATCHINFO.Take * PREPH1 / BATCHINFO.H1), fNumber(ns, BATCHINFO.Chance * 100, 2), "%"))
     update(ns, ns.sprintf("Prep Wave: W:%s G:%s W:%s H:%s W:%s G:%s W:%s", PREPW1, PREPG1, PREPW2, PREPH1, PREPW3, PREPG2, PREPW4))
     update(ns, ns.sprintf("Batching Composition: H:%s W:%s G:%s W:%s", BATCHINFO.H1, BATCHINFO.W1, BATCHINFO.G1, BATCHINFO.W2))
     update(ns, ns.sprintf("%s  Countdown: %s", "$" + profitPerSecond(ns, WEAKENTIME, BATCHINFO.Take * BATCHINFO.H1 / PREPH1, BATCHESRUN + 1), fTime(ns, (WEAKENTIME + ENDTIME) - performance.now())))

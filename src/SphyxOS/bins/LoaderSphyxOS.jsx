@@ -2,13 +2,14 @@
  * Discord: Sphyxis
  */
 import { getResetInf, getOwnedSF, runIt, proxy, getServersLight, getServerAvailRam, getSyms, getPosi } from "SphyxOS/util.js"
-const version = "v3.0.5.18"
+const version = "v3.0.6.0"
 const loaderConfigFile = "SphyxOSUserData/loaderData/config.txt"
 const currentJSON = "SphyxOSUserData/loaderData/SphyxOS.txt"
 const updatedJSON = "SphyxOSUserData/loaderData/SphyxOSNew.txt"
 const hashKeyFileName = "SphyxOS/special/hashKey.txt"
 const discordInviteUrl = "https://discord.gg/BScc48TK8Z"
 const gitHubIssueUrl = "https://github.com/Sphyxis/SphyxOS/issues"
+const IPVGO_RESOURCE_LEVELS = ["Min", "Low", "Med", "High", "Max"]
 const openDB = new Set
 let optionsDB = {}
 let resetInfo
@@ -28,6 +29,7 @@ let wnd
  * 11 - stanek: emit pid
  * 12 - puppetMini receive
  * 13 - stocks receive
+ * 14 - loader: emit pid
  * 15 - ipvgo receive
  * 16 - gangs receive
  * 17 - sleeves receive
@@ -60,11 +62,13 @@ export async function main(ns) {
   resetInfo = await getResetInf(ns)
   sourceFiles = await getOwnedSF(ns)
   if (hasBN(resetInfo, sourceFiles, 13)) await proxy(ns, "stanek.acceptGift")
-  //optionsDB = []
+
   if (globalThis["document"].autopilot) optionsDB["AutoPilotMoveOn"] = globalThis["document"].autopilot
   await loadLoaderConfig(ns)
+  ns.writePort(14, ns.pid)
   ns.atExit(() => {
     saveLoaderConfig(ns)
+    ns.clearPort(14)
   })
 
   if (ns.args.includes("BBRestart")) { //Restart from BB
@@ -241,6 +245,18 @@ function normalizeSleeveToggleMode(mode) {
   if (mode === "None") return "Idle"
   return mode
 }
+function normalizeIPvGoResourceLevel(value, added = []) {
+  return IPVGO_RESOURCE_LEVELS.concat(...added).includes(value) ? value : "Med"
+}
+function getMaximumIPvGoThreads() {
+  return Math.max(1, Math.floor(globalThis["navigator"]?.hardwareConcurrency || 2))
+}
+function normalizeIPvGoThreads(value) {
+  const maximum = getMaximumIPvGoThreads()
+  if (String(value).toLowerCase() === "max") return maximum
+  const count = Math.floor(Number(value))
+  return Number.isFinite(count) && count >= 1 ? Math.min(count, maximum) : maximum
+}
 function isHashAutoTargetAvailable(target, snapshot = {}) {
   switch (normalizeHashAutoTarget(target)) {
     case "min":
@@ -278,40 +294,36 @@ function clearForceHidden() {
       openDB.delete(key)
   }
 }
-function normalizeHoverButtonLabel(label) {
+function normalizeHoverButtonLabel(rowTitle, label) {
   //Returns the regular lable name always
   const trimmedLabel = (label ?? "").trim()
-  if (trimmedLabel.startsWith("Stock:"))
-    return "Stock"
-  if (trimmedLabel.startsWith("Training:"))
-    return "Training"
-  switch (trimmedLabel) {
-    case "De-Activate":
-      return "Activate"
-    case "Unshare Ram":
-      return "Share Ram"
-    case "Bribe Unavailable":
-      return "Bribe"
-    case "Pls Wait":
-      return "Charge"
-    case "Money":
-    case "MinSec":
-    case "MaxMoney":
-    case ".cct's":
-    case "C-Money":
-    case "C-Research":
-    case "BBRank":
-    case "BBSp":
-    case "Study":
-    case "Train":
-    case "Job Favor":
-      return "No AutoHash"
-    default:
-      return trimmedLabel
-  }
+  if (trimmedLabel.startsWith("Stock:")) return "Stock"
+  if (trimmedLabel.startsWith("Training:")) return "Training"
+  if (trimmedLabel === "De-Activate") return "Activate"
+  if (trimmedLabel === "Unshare Ram") return "Share Ram"
+  if (trimmedLabel === "Bribe Unavailable") return "Bribe"
+  if (trimmedLabel === "Pls Wait") return "Charge"
+  if (rowTitle === "Hashing")
+    switch (trimmedLabel) {
+      case "Cash":
+      case "MinSec":
+      case "MaxMoney":
+      case ".cct's":
+      case "C-Money":
+      case "C-Research":
+      case "BBRank":
+      case "BBSp":
+      case "Study":
+      case "Train":
+      case "Job Favor":
+        return "No AutoHash"
+      default:
+        return trimmedLabel
+    }
+  return trimmedLabel
 }
 function getButtonHelp(rowTitle, label) {
-  const normalizedLabel = normalizeHoverButtonLabel(label)
+  const normalizedLabel = normalizeHoverButtonLabel(rowTitle, label)
   const rowHelp = hoverHelpDB[rowTitle] ?? {}
   return rowHelp[normalizedLabel] ?? `No hover help has been written yet for ${rowTitle} / ${normalizedLabel}.`
 }
@@ -462,20 +474,20 @@ function LoaderApp({ ns, staticInfo }) {
   }
   const handleHoverCapture = (event) => {
     if (!snapshot?.options["DisplayToggleHelper"]) return
-    const button = event.target.closest?.("button")
-    if (!button) return
-    if (button.dataset?.nohover === "true") return
-    const rowElement = button.closest?.("[data-row]")
+    const hoverTarget = event.target.closest?.("button,[data-hover-label]")
+    if (!hoverTarget) return
+    if (hoverTarget.dataset?.nohover === "true") return
+    const rowElement = hoverTarget.closest?.("[data-row]")
     const rowTitle = rowElement?.dataset?.row ?? "Display"
-    const label = button.textContent?.trim() ?? ""
+    const label = hoverTarget.dataset?.hoverLabel ?? hoverTarget.textContent?.trim() ?? ""
     setHoverPosition({ x: (event.clientX ?? 0) + 8, y: (event.clientY ?? 0) - 8 })
     setHoverHelp(getButtonHelp(rowTitle, label))
   }
   const handleHoverOutCapture = (event) => {
-    const button = event.target.closest?.("button")
-    if (!button) return
-    const nextButton = event.relatedTarget?.closest?.("button")
-    if (!nextButton) setHoverHelp("")
+    const hoverTarget = event.target.closest?.("button,[data-hover-label]")
+    if (!hoverTarget) return
+    const nextHoverTarget = event.relatedTarget?.closest?.("button,[data-hover-label]")
+    if (!nextHoverTarget) setHoverHelp("")
   }
   const handleMouseMoveCapture = (event) => {
     if (!hoverHelp || !snapshot?.options["DisplayToggleHelper"]) return
@@ -721,6 +733,72 @@ function SleeveTrainingSelector({ ns, snapshot, runAction } = {}) {
     </span>
   )
 }
+function IPvGoResourceControls({ ns, snapshot, runAction } = {}) {
+  const React = getReactLib()
+  const effort = normalizeIPvGoResourceLevel(snapshot?.options?.["IPvGoEffort"], ["Ultra"])
+  const memory = normalizeIPvGoResourceLevel(snapshot?.options?.["IPvGoMemory"])
+  const threadSetting = normalizeIPvGoThreads(snapshot?.options?.["IPvGoThreads"])
+  const [threadDraft, setThreadDraft] = React.useState(String(threadSetting))
+  const maximumThreads = getMaximumIPvGoThreads()
+
+  React.useEffect(() => {
+    setThreadDraft(String(threadSetting))
+  }, [threadSetting])
+
+  const commitThreads = async () => {
+    if (threadDraft.trim() === "") {
+      setThreadDraft(String(threadSetting))
+      return
+    }
+    const threads = normalizeIPvGoThreads(threadDraft)
+    await runAction(() => buttonIPvGoThreads(ns, threads))
+  }
+
+  return (
+    <span style={ipvGoSettingsStyle}>
+      <label style={ipvGoFieldStyle}>
+        <span style={ipvGoFieldLabelStyle} data-hover-label="Effort">{"Effort"}</span>
+        <select
+          style={ipvGoSelectStyle}
+          value={effort}
+          onChange={(event) => runAction(() => buttonIPvGoEffort(ns, event.target.value))}
+        >
+          {IPVGO_RESOURCE_LEVELS.concat("Ultra").map((level) => <option key={level} value={level}>{level}</option>)}
+        </select>
+      </label>
+      <label style={ipvGoFieldStyle}>
+        <span style={ipvGoFieldLabelStyle} data-hover-label="Memory">{"Memory"}</span>
+        <select
+          style={ipvGoSelectStyle}
+          value={memory}
+          onChange={(event) => runAction(() => buttonIPvGoMemory(ns, event.target.value))}
+        >
+          {IPVGO_RESOURCE_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
+        </select>
+      </label>
+      <label style={ipvGoFieldStyle}>
+        <span style={ipvGoFieldLabelStyle} data-hover-label="Threads">{"Threads"}</span>
+        <input
+          style={ipvGoThreadInputStyle}
+          type="number"
+          min="1"
+          max={maximumThreads}
+          step="1"
+          placeholder={String(maximumThreads)}
+          value={threadDraft}
+          onChange={(event) => setThreadDraft(event.target.value)}
+          onBlur={commitThreads}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault()
+              event.currentTarget.blur()
+            }
+          }}
+        ></input>
+      </label>
+    </span>
+  )
+}
 function buildRows(ns, snapshot, runAction, staticInfo) {
   // Pull the current option snapshot out for shorter access in the row builders
   const options = snapshot.options
@@ -813,21 +891,22 @@ function buildRows(ns, snapshot, runAction, staticInfo) {
     <button style={options["DarknetSharing"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonDarknet(ns, "sharing"))}>{"Sharing"}</button></span>])
   // IPvGo management
   rows.push(["IPvGo", true, true, <span>
+    <IPvGoResourceControls ns={ns} snapshot={snapshot} runAction={runAction}></IPvGoResourceControls><br></br>
     <button style={snapshot.ports.ipvgo !== "NULL PORT DATA" ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoStart(ns))}>{snapshot.ports.ipvgo === "NULL PORT DATA" ? "Activate" : "De-Activate"}</button>
     <button style={options["IPvGoPlayAsWhite"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoPlayWhite(ns))}>{"Play White"}</button>
-    <button style={options["IPvGoRepeat"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoRepeat(ns))}>{"Repeat"}</button>
+    <button style={options["IPvGoRepeat"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoRepeat(ns))}>{"Repeat"}</button><br></br>
     <button style={options["IPvGoCheats"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoCheats(ns))}>{"Cheats"}</button>
-    <button style={options["IPvGoLogging"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoLogging(ns))}>{"Logging"}</button><br></br>
-    <button style={options["IPvGoNetburners"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoNetburners(ns))}>{"Netburners"}</button>
-    <button style={options["IPvGoSlumSnakes"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoSlumSnakes(ns))}>{"Slum Snakes"}</button>
-    <button style={options["IPvGoTheBlackHand"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoTheBlackHand(ns))}>{"The Black Hand"}</button>
-    <button style={options["IPvGoTetrads"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoTetrads(ns))}>{"Tetrads"}</button><br></br>
-    <button style={options["IPvGoDaedalus"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoDaedalus(ns))}>{"Daedalus"}</button>
-    <button style={options["IPvGoIlluminati"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoIlluminati(ns))}>{"Illuminati"}</button>
-    <button style={options["IPvGoUnknown"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoUnknown(ns))}>{"????????"}</button>
-    <button style={options["IPvGoNoAI"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoNoAI(ns))}>{"No AI"}</button>
     <button style={options["IPvGoSlowMode"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoSlowMode(ns))}>{"SlowMode"}</button>
-    <button style={options["IPvGoPopOut"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonPopout(ns, "IPvGo"))}>{"Pop Out"}</button></span>])
+    <button style={options["IPvGoPopOut"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonPopout(ns, "IPvGo"))}>{"Pop Out"}</button><br></br>
+    <button style={options["IPvGoNetburners"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoSetFaction(ns, "Netburners"))}>{"Netburners"}</button>
+    <button style={options["IPvGoSlumSnakes"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoSetFaction(ns, "Slum Snakes"))}>{"Slum Snakes"}</button>
+    <button style={options["IPvGoTheBlackHand"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoSetFaction(ns, "The Black Hand"))}>{"The Black Hand"}</button>
+    <button style={options["IPvGoTetrads"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoSetFaction(ns, "Tetrads"))}>{"Tetrads"}</button><br></br>
+    <button style={options["IPvGoDaedalus"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoSetFaction(ns, "Daedalus"))}>{"Daedalus"}</button>
+    <button style={options["IPvGoIlluminati"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoSetFaction(ns, "Illuminati"))}>{"Illuminati"}</button>
+    <button style={options["IPvGoUnknown"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoSetFaction(ns, "???"))}>{"????????"}</button>
+    <button style={options["IPvGoNoAI"] ? greenStyle : redStyle} onClick={() => runAction(() => buttonIPvGoSetFaction(ns, "No AI"))}>{"No AI"}</button>
+  </span>])
   // Gang automation controls
   rows.push(["Gangs", 2, 1, <span>
     <button style={snapshot.ports.gangs !== "NULL PORT DATA" ? greenStyle : redStyle} onClick={() => runAction(() => buttonGangStart(ns))}>{snapshot.ports.gangs === "NULL PORT DATA" ? "Activate" : "De-Activate"}</button>
@@ -949,6 +1028,7 @@ const commandHandlers = {
   "ipvgo noai off": () => { optionsDB["IPvGoNoAI"] = false },
   "ipvgo slowmode on": () => { optionsDB["IPvGoSlowMode"] = true },
   "ipvgo slowmode off": () => { optionsDB["IPvGoSlowMode"] = false },
+  "ipvgo popout on": () => { optionsDB["IPvGoPopOut"] = true },
   "ipvgo popout off": () => { optionsDB["IPvGoPopOut"] = false },
   "gang autoascend on": () => { optionsDB["GangAutoAscend"] = true },
   "gang autoascend off": () => { optionsDB["GangAutoAscend"] = false },
@@ -980,6 +1060,12 @@ function processCommands(ns) {
     const result = ns.readPort(1)
     if (result === 1 || result === true) continue // 1 and true were used to just cycle the display, anythign else is state communication
     if (result.startsWith("dnetStocks:")) commandHandlers["dnetStocks"](result.split(":")[1])
+    else if (result.startsWith("ipvgo effort:"))
+      optionsDB["IPvGoEffort"] = normalizeIPvGoResourceLevel(result.slice("ipvgo effort:".length), ["Ultra"])
+    else if (result.startsWith("ipvgo memory:"))
+      optionsDB["IPvGoMemory"] = normalizeIPvGoResourceLevel(result.slice("ipvgo memory:".length))
+    else if (result.startsWith("ipvgo threads:"))
+      optionsDB["IPvGoThreads"] = normalizeIPvGoThreads(result.slice("ipvgo threads:".length))
     else if (commandHandlers[result]) commandHandlers[result]()
     else ns.tprintf("Invalid response received in Loader: %s", result);
   }
@@ -1101,7 +1187,7 @@ async function buttonThemeEditorStart(ns) {
   else await runIt(ns, "SphyxOS/bins/themeEditor.jsx", false, [])
 }
 async function buttonDisplayRemove(ns) {
-  return //Safety for myself
+  //return  //Safety for myself
   const result = await ns.prompt("Are you sure?", { type: "boolean" })
   if (result === true) {
     const localStorage = !!await ns.prompt("Local Storage(Stanek loadouts, etc) too?", { type: "boolean" })
@@ -1450,7 +1536,7 @@ async function buttonIPvGoStart(ns) {
     ns.writePort(15, optionsDB["IPvGoRepeat"] ? "Repeat On" : "Repeat Off")
     ns.writePort(15, optionsDB["IPvGoPlayAsWhite"] ? "Play as White On" : "Play as White Off")
     ns.writePort(15, optionsDB["IPvGoCheats"] ? "Cheats On" : "Cheats Off")
-    ns.writePort(15, optionsDB["IPvGoLogging"] ? "Logging On" : "Logging Off")
+    //ns.writePort(15, optionsDB["IPvGoLogging"] ? "Logging On" : "Logging Off")
     ns.writePort(15, optionsDB["IPvGoNetburners"] ? "Net On" : "Net Off")
     ns.writePort(15, optionsDB["IPvGoSlumSnakes"] ? "Slum On" : "Slum Off")
     ns.writePort(15, optionsDB["IPvGoTheBlackHand"] ? "BH On" : "BH Off")
@@ -1459,7 +1545,12 @@ async function buttonIPvGoStart(ns) {
     ns.writePort(15, optionsDB["IPvGoIlluminati"] ? "Illum On" : "Illum Off")
     ns.writePort(15, optionsDB["IPvGoUnknown"] ? "???? On" : "???? Off")
     ns.writePort(15, optionsDB["IPvGoNoAI"] ? "No AI On" : "No AI Off")
-    await runIt(ns, "SphyxOS/bins/go.js", true, [])
+    ns.writePort(15, optionsDB["IPvGoSlowMode"] ? "SlowMode On" : "SlowMode Off")
+    ns.writePort(15, optionsDB["IPvGoPopOut"] ? "popout" : "nopopout")
+    ns.writePort(15, "Effort:" + normalizeIPvGoResourceLevel(optionsDB["IPvGoEffort"], ["Ultra"]))
+    ns.writePort(15, "Memory:" + normalizeIPvGoResourceLevel(optionsDB["IPvGoMemory"]))
+    ns.writePort(15, "Threads:" + normalizeIPvGoThreads(optionsDB["IPvGoThreads"]))
+    await runIt(ns, "SphyxOS/bins/go.jsx", true, [])
   }
 }
 function buttonIPvGoPlayWhite(ns) {
@@ -1481,53 +1572,84 @@ function buttonIPvGoCheats(ns) {
   optionsDB["IPvGoCheats"] = !optionsDB["IPvGoCheats"]
   if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoCheats"] ? "Cheats On" : "Cheats Off")
 }
-function buttonIPvGoLogging(ns) {
-  optionsDB["IPvGoLogging"] = !optionsDB["IPvGoLogging"]
-  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoLogging"] ? "Logging On" : "Logging Off")
-}
-function buttonIPvGoNetburners(ns) {
-  optionsDB["IPvGoNetburners"] = !optionsDB["IPvGoNetburners"]
-  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoNetburners"] ? "Net On" : "Net Off")
-}
-function buttonIPvGoSlumSnakes(ns) {
-  optionsDB["IPvGoSlumSnakes"] = !optionsDB["IPvGoSlumSnakes"]
-  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoSlumSnakes"] ? "Slum On" : "Slum Off")
-}
-function buttonIPvGoTheBlackHand(ns) {
-  optionsDB["IPvGoTheBlackHand"] = !optionsDB["IPvGoTheBlackHand"]
-  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoTheBlackHand"] ? "BH On" : "BH Off")
-}
-function buttonIPvGoTetrads(ns) {
-  optionsDB["IPvGoTetrads"] = !optionsDB["IPvGoTetrads"]
-  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoTetrads"] ? "Tetrad On" : "Tetrad Off")
-}
-function buttonIPvGoDaedalus(ns) {
-  optionsDB["IPvGoDaedalus"] = !optionsDB["IPvGoDaedalus"]
-  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoDaedalus"] ? "Daed On" : "Daed Off")
-}
-function buttonIPvGoIlluminati(ns) {
-  optionsDB["IPvGoIlluminati"] = !optionsDB["IPvGoIlluminati"]
-  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoIlluminati"] ? "Illum On" : "Illum Off")
-}
-function buttonIPvGoUnknown(ns) {
-  optionsDB["IPvGoUnknown"] = !optionsDB["IPvGoUnknown"]
-  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoUnknown"] ? "???? On" : "???? Off")
-}
-function buttonIPvGoNoAI(ns) {
-  optionsDB["IPvGoNoAI"] = !optionsDB["IPvGoNoAI"]
-  if (!optionsDB["IPvGoNoAI"]) {
-    optionsDB["IPvGoPlayAsWhite"] = false
-    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, "Play as White Off")
-    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, "No AI Off")
+function buttonIPvGoSetFaction(ns, faction) {
+  const hasTRP = resetInfo.ownedAugs.get("The Red Pill")
+  if (faction === "???") {
+    if (hasTRP) {
+      optionsDB["IPvGoUnknown"] = !optionsDB["IPvGoUnknown"]
+      if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoUnknown"] ? "???? On" : "???? Off")
+    }
+    else {
+      optionsDB["IPvGoUnknown"] = false
+      ns.toast("The ???? AI is unlocked in Mid Game")
+    }
   }
-  else {
-    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoPlayAsWhite"] ? "Play as White On" : "Play as White Off")
-    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, "No AI On")
+  else if (faction === "Netburners") {
+    optionsDB["IPvGoNetburners"] = !optionsDB["IPvGoNetburners"]
+    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoNetburners"] ? "Net On" : "Net Off")
+  }
+  else if (faction === "Slum Snakes") {
+    optionsDB["IPvGoSlumSnakes"] = !optionsDB["IPvGoSlumSnakes"]
+    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoSlumSnakes"] ? "Slum On" : "Slum Off")
+  }
+  else if (faction === "The Black Hand") {
+    optionsDB["IPvGoTheBlackHand"] = !optionsDB["IPvGoTheBlackHand"]
+    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoTheBlackHand"] ? "BH On" : "BH Off")
+  }
+  else if (faction === "Tetrads") {
+    optionsDB["IPvGoTetrads"] = !optionsDB["IPvGoTetrads"]
+    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoTetrads"] ? "Tetrad On" : "Tetrad Off")
+  }
+  else if (faction === "Daedalus") {
+    optionsDB["IPvGoDaedalus"] = !optionsDB["IPvGoDaedalus"]
+    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoDaedalus"] ? "Daed On" : "Daed Off")
+  }
+  else if (faction === "Illuminati") {
+    optionsDB["IPvGoIlluminati"] = !optionsDB["IPvGoIlluminati"]
+    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoIlluminati"] ? "Illum On" : "Illum Off")
+  }
+  else if (faction === "No AI") {
+    optionsDB["IPvGoNoAI"] = !optionsDB["IPvGoNoAI"]
+    if (!optionsDB["IPvGoNoAI"]) {
+      optionsDB["IPvGoPlayAsWhite"] = false
+      if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, "Play as White Off")
+      if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, "No AI Off")
+    }
+    else {
+      if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoPlayAsWhite"] ? "Play as White On" : "Play as White Off")
+      if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, "No AI On")
+    }
+  }
+  if (!optionsDB["IPvGoUnknown"]
+    && !optionsDB["IPvGoNetburners"]
+    && !optionsDB["IPvGoSlumSnakes"]
+    && !optionsDB["IPvGoTheBlackHand"]
+    && !optionsDB["IPvGoTetrads"]
+    && !optionsDB["IPvGoDaedalus"]
+    && !optionsDB["IPvGoIlluminati"]
+    && !optionsDB["IPvGoNoAI"]) {
+    optionsDB["IPvGoNetburners"] = true
+    if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, "Net On")
   }
 }
 function buttonIPvGoSlowMode(ns) {
   optionsDB["IPvGoSlowMode"] = !optionsDB["IPvGoSlowMode"]
   if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, optionsDB["IPvGoSlowMode"] ? "SlowMode On" : "SlowMode Off")
+}
+function buttonIPvGoEffort(ns, value) {
+  const effort = normalizeIPvGoResourceLevel(value, ["Ultra"])
+  optionsDB["IPvGoEffort"] = effort
+  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, "Effort:" + effort)
+}
+function buttonIPvGoMemory(ns, value) {
+  const memory = normalizeIPvGoResourceLevel(value)
+  optionsDB["IPvGoMemory"] = memory
+  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, "Memory:" + memory)
+}
+function buttonIPvGoThreads(ns, value) {
+  const threads = normalizeIPvGoThreads(value)
+  optionsDB["IPvGoThreads"] = threads
+  if (ns.peek(5) !== "NULL PORT DATA") ns.writePort(15, "Threads:" + threads)
 }
 async function buttonGangStart(ns) {
   if (ns.peek(6) !== "NULL PORT DATA") {
@@ -1906,10 +2028,15 @@ async function setOptionsDB(ns) {
     optionsDB["IPvGoUnknown"] = true
   if (optionsDB["IPvGoNoAI"] === undefined)
     optionsDB["IPvGoNoAI"] = false
+  if (optionsDB["IPvGoPlayAsWhite"])
+    optionsDB["IPvGoNoAI"] = true
   if (optionsDB["IPvGoSlowMode"] === undefined)
     optionsDB["IPvGoSlowMode"] = false
   if (optionsDB["IPvGoPopOut"] === undefined)
     optionsDB["IPvGoPopOut"] = false
+  optionsDB["IPvGoEffort"] = normalizeIPvGoResourceLevel(optionsDB["IPvGoEffort"], ["Ultra"])
+  optionsDB["IPvGoMemory"] = normalizeIPvGoResourceLevel(optionsDB["IPvGoMemory"])
+  optionsDB["IPvGoThreads"] = normalizeIPvGoThreads(optionsDB["IPvGoThreads"])
   if (optionsDB["GangAutoAscend"] === undefined)
     optionsDB["GangAutoAscend"] = true
   if (optionsDB["GangAutoEQ"] === undefined)
@@ -2103,6 +2230,40 @@ const rowButtonBaseStyle = {
 const alwaysOnStyle = {
   backgroundColor: "var(--bb-theme-cha)",
   color: "var(--bb-theme-backgroundprimary)"
+}
+const ipvGoSettingsStyle = {
+  display: "inline-flex",
+  alignItems: "flex-end",
+  gap: 6,
+  flexWrap: "wrap",
+  marginBottom: 4
+}
+const ipvGoFieldStyle = {
+  display: "inline-flex",
+  flexDirection: "column",
+  gap: 2
+}
+const ipvGoFieldLabelStyle = {
+  color: "var(--bb-theme-secondary)",
+  fontSize: 11,
+  lineHeight: 1,
+  cursor: "help"
+}
+const ipvGoSelectStyle = {
+  width: 76,
+  height: 28,
+  padding: "2px 5px",
+  borderRadius: 4,
+  border: "1px solid rgba(255,255,255,0.16)",
+  backgroundColor: "var(--bb-theme-backgroundsecondary)",
+  color: "var(--bb-theme-primary)",
+  fontFamily: "inherit",
+  fontSize: 12
+}
+const ipvGoThreadInputStyle = {
+  ...ipvGoSelectStyle,
+  width: 62,
+  boxSizing: "border-box"
 }
 const topPanelWrapStyle = {
   position: "relative",
@@ -2432,7 +2593,7 @@ const darknetStockSelectedStyle = {
   boxShadow: "0 0 0 1px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.22)"
 }
 const hoverHelpDB = {
-  Display: {
+  "Display": {
     "Open Logs": "Open tail windows for all running scripts.",
     "Join Discord!!": "Attempts to open a link to the official Bitburner Discord server.  Will also print the link to the terminal.",
     "Create GitHub Issue": "Attempts to open a link to the official GitHub Issues page.  Will also print the link to the terminal.",
@@ -2441,7 +2602,7 @@ const hoverHelpDB = {
     "Change Log": "Open the SphyxOS change log viewer.",
     "REMOVE PROGRAM": "Remove SphyxOS files after confirmation, including optional local storage cleanup."
   },
-  Batcher: {
+  "Batcher": {
     "Activate": "Start or stop the batcher controller script.",
     "Auto-Buy Servers": "Let the batcher automatically purchase servers when enabled.",
     "Use Hacknet": "Allow the batcher to use Hacknet resources when enabled.",
@@ -2453,11 +2614,11 @@ const hoverHelpDB = {
     "LogErrors": "Enable additional batcher log/error output.",
     "Pop Out": "Open or close a dedicated tail window for this subsystem that can leave the game space."
   },
-  Hacknet: {
+  "Hacknet": {
     "Buy Hacknet": "Run the Hacknet purchasing helper once.",
     "Batcher: AutoBuy": "Let the batcher automatically buy Hacknet upgrades when available."
   },
-  Hashing: {
+  "Hashing": {
     "No AutoHash": "Choose which hash spending option Auto Hash should use.",
     "Money": "Spend hashes directly for money.",
     "Reduce Min Sec": "Spend hashes to reduce minimum security on the current batch target.",
@@ -2471,7 +2632,7 @@ const hoverHelpDB = {
     "Boost Train": "Spend hashes to improve gym training gains.",
     "Boost Job Favor": "Spend hashes to improve company favor/job progression."
   },
-  Stocks: {
+  "Stocks": {
     "Activate": "Start or stop the stock trader.",
     "Buy": "Trigger an immediate stock buy pass.",
     "Sell": "Trigger an immediate stock sell pass.",
@@ -2479,7 +2640,7 @@ const hoverHelpDB = {
     "Reset Stats": "Reset tracked stock stats/history.",
     "Pop Out": "Open or close a dedicated tail window for this subsystem that can leave the game space."
   },
-  Misc: {
+  "Misc": {
     "Backdoor": "Run the basic backdoor helper for reachable servers.",
     "Backdoor Basic": "Use singularity functions to backdoor the basic target set.",
     "Backdoor All": "Use singularity functions to backdoor every eligible server.",
@@ -2488,13 +2649,13 @@ const hoverHelpDB = {
     "Share Ram": "Start sharing free RAM across the network.",
     "Keep Tab Alive": "Use a low-volume audio context trick to keep the tab active."
   },
-  Singularity: {
+  "Singularity": {
     "Dump Money": "Spend money on augments and home upgrades.",
     "AutoPilot": "Start or stop the autopilot controller.",
     "Start On Next": "Tell autopilot whether to begin automatically on the next node.",
     "Pop Out": "Open or close a dedicated tail window for this subsystem that can leave the game space."
   },
-  DarkNet: {
+  "DarkNet": {
     "Activate": "Start or Stop the Darknet worm.",
     "Phishing": "Enable or Disable Phishing attacks.",
     "Inducing": "Enable or Disable Inducing nearby servers to move.",
@@ -2503,12 +2664,11 @@ const hoverHelpDB = {
     "Stock": "Select which stock the DarkNet helper should promote. None disables stock promotion.  All targets every stock.  Owned stocks show in primary color while unowned stocks show in error color.",
     "Show Lab Map": "Once the Lab has been discovered, show a map of the solvers progress."
   },
-  IPvGo: {
+  "IPvGo": {
     "Activate": "Start or stop the IPvGo bot.",
     "Play White": "Play as white when the bot starts games.",
     "Repeat": "Automatically continue into another game after a match ends.",
     "Cheats": "Allow cheat-assisted behavior where supported.",
-    "Logging": "Enable extra logging for IPvGo decisions.",
     "Netburners": "Allow Netburners as an IPvGo opponent.",
     "Slum Snakes": "Allow Slum Snakes as an IPvGo opponent.",
     "The Black Hand": "Allow The Black Hand as an IPvGo opponent.",
@@ -2518,9 +2678,12 @@ const hoverHelpDB = {
     "????????": "Allow the hidden post-fl1ght opponent.",
     "No AI": "Restrict play to non-AI/practice style boards where supported.",
     "SlowMode": "Add a delay before moves so games are easier to follow.",
+    "Effort": "Choose the solver playout tier. Med is the default.",
+    "Memory": "Choose the total search-node memory tier. Med is the default.",
+    "Threads": "Enter a worker count. The value applies at the next safe search boundary.",
     "Pop Out": "Open or close a dedicated tail window for this subsystem that can leave the game space."
   },
-  Gangs: {
+  "Gangs": {
     "Activate": "Start or stop the gang manager.",
     "Auto-Ascend": "Automatically ascend gang members when thresholds are met.",
     "Auto-EQ": "Automatically buy gang equipment.",
@@ -2532,13 +2695,13 @@ const hoverHelpDB = {
     "Ascend All": "Ascend every gang member.",
     "Pop Out": "Open or close a dedicated tail window for this subsystem that can leave the game space."
   },
-  Corps: {
+  "Corps": {
     "Activate": "Start or stop the corporation manager.",
     "Reset TAII": "Clear/reset the TAII database used by the corp scripts.",
     "Bribe": "Spend corporation funds to bribe eligible factions.",
     "Pop Out": "Open or close a dedicated tail window for this subsystem that can leave the game space."
   },
-  BladeBurner: {
+  "BladeBurner": {
     "Activate": "Start or stop the Bladeburner manager.",
     "Finisher": "Allow the manager to finish the node and move on when ready.",
     "Int Mode": "Bias activity toward intelligence-related gains.",
@@ -2546,14 +2709,14 @@ const hoverHelpDB = {
     "Infil Only": "Limit sleeve support to infiltration-related behavior.",
     "Pop Out": "Open or close a dedicated tail window for this subsystem that can leave the game space."
   },
-  Stanek: {
+  "Stanek": {
     "Charge": "Start charging the current Stanek layout.",
     "Save Config": "Save the current Stanek fragment layout.",
     "Load Config": "Load a saved Stanek fragment layout.",
     "Delete Config": "Delete a saved Stanek fragment layout.",
     "Defaults": "Include default layouts as load options."
   },
-  Sleeves: {
+  "Sleeves": {
     "Activate": "Start or stop the sleeve manager.",
     "Recovery": "Set sleeves to shock recovery mode.",
     "Sync": "Set sleeves to synchronization mode.",
@@ -2565,16 +2728,16 @@ const hoverHelpDB = {
     "Int": "Set sleeves to intelligence-focused work.",
     "Pop Out": "Open or close a dedicated tail window for this subsystem that can leave the game space."
   },
-  Grafting: {
+  "Grafting": {
     "Activate": "Start or Stop the auto-grafting helper.",
     "Pop Out": "Open or close a dedicated tail window for this subsystem that can leave the game space."
   },
-  Games: {
+  "Games": {
     "Minesweeper": "Classic Minesweeper with configurable difficulties and mouse support.",
     "DOOM": "Classic DOOM 1, 2 and 3.  Sound and Mouse support.",
     "Timberman": "How long can you avoid the logs?  Left/Right KB Arrows support."
   },
-  Cheats: {
+  "Cheats": {
     "Dev Menu": "Open the Bitburner developer menu helper.",
     "NOT the Dev Menu": "Opens the SphyxOS tail window dev menu.  Does not give the dev menu achievement",
     "Unlock All Achievements": "Unlock every achievement.",
@@ -2594,7 +2757,7 @@ async function runItHome(ns, script, argmts, scriptOverride) {
 }
 const hashAutoTargetOptions = [
   { label: "None", value: "None" },
-  { label: "Money", value: "money" },
+  { label: "Cash", value: "money" },
   { label: "MinSec", value: "min" },
   { label: "MaxMoney", value: "max" },
   { label: ".cct's", value: "coding" },
