@@ -13,6 +13,61 @@ export function Toggle({on, activeColor, offColor, onClick}: { on: boolean; acti
     );
 }
 
+/**
+ * A multi-value counterpart to Toggle, rendered as "< value >" - clicking advances to the next
+ * option (shift/right-click steps back). Used for settings with more than two states (route,
+ * next-node driver, augs-per-install) without introducing a dropdown, which would look foreign
+ * next to the bracket toggles.
+ *
+ * `disabled` marks options that exist but aren't currently selectable (e.g. handing off to
+ * SphyxOS when SphyxOS isn't installed); they're skipped when cycling and dimmed if somehow set.
+ */
+export function Cycler<T extends string>({value, options, labels, activeColor, offColor, disabled, onChange}: {
+    value: T;
+    options: readonly T[];
+    labels?: Partial<Record<T, string>>;
+    activeColor: string;
+    offColor: string;
+    disabled?: readonly T[];
+    onChange: (next: T) => void;
+}) {
+    const selectable = options.filter((o) => !disabled?.includes(o));
+    const step = (delta: number) => {
+        if (selectable.length === 0) return;
+        const at = selectable.indexOf(value);
+        // An unselectable current value still advances predictably: treat it as index -1.
+        const next = (at + delta + selectable.length * 2) % selectable.length;
+        onChange(selectable[next]);
+    };
+    const isDisabled = disabled?.includes(value) ?? false;
+
+    return (
+        <button
+            className="wacnos-cycler"
+            style={{color: isDisabled ? offColor : activeColor}}
+            onClick={(e) => step(e.shiftKey ? -1 : 1)}
+            onContextMenu={(e) => {
+                e.preventDefault();
+                step(-1);
+            }}
+        >
+            <span className="wacnos-cycler-arrow">&lt;</span>
+            {labels?.[value] ?? value}
+            <span className="wacnos-cycler-arrow">&gt;</span>
+        </button>
+    );
+}
+
+/** A full-width callout for autopilot pauses - sticky until the user resumes or skips. */
+export function Banner({text, color, children}: { text: string; color: string; children?: React.ReactNode }) {
+    return (
+        <div className="wacnos-banner" style={{borderColor: color, color}}>
+            <span className="wacnos-banner-text">{text}</span>
+            {children && <span className="wacnos-banner-actions">{children}</span>}
+        </div>
+    );
+}
+
 /** A labeled settings row: label, a dotted leader filling the remaining width, then a control. */
 export function Row({label, line, children}: { label: string; line: string; children: React.ReactNode }) {
     return (

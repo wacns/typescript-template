@@ -161,7 +161,47 @@ export const WACNOS_CSS = `
     background: transparent;
     cursor: pointer;
 }
+.wacnos-cycler {
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid currentColor;
+    background: transparent;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.wacnos-cycler-arrow {
+    opacity: 0.45;
+    margin: 0 4px;
+}
+.wacnos-cycler:hover .wacnos-cycler-arrow {
+    opacity: 1;
+}
+.wacnos-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 1px solid;
+    border-radius: 3px;
+    padding: 6px 8px;
+    margin: 6px 0 2px;
+    font-size: 10.5px;
+    line-height: 1.35;
+}
+.wacnos-banner-text {
+    font-weight: 700;
+}
+.wacnos-banner-actions {
+    display: flex;
+    gap: 5px;
+    flex: 0 0 auto;
+}
 .wacnos-toggle:focus-visible,
+.wacnos-cycler:focus-visible,
 .wacnos-action:focus-visible {
     outline: 1px solid currentColor;
     outline-offset: 2px;

@@ -20,4 +20,16 @@ export const WacnPorts = {
     LOADER_PID: 103,
     /** hackloop.ts overwrites a JSON HackLoopStatus snapshot here every cycle. */
     HACKLOOP_STATUS: 104,
+    /** autopilot/daemon.ts writes its own pid here on start, clears it on exit. */
+    AUTOPILOT_PID: 105,
+    /** autopilot/daemon.ts reads command strings from here (pause/resume/skip/stop/route:<id>). */
+    AUTOPILOT_CMD: 106,
+    /** autopilot/daemon.ts overwrites a JSON AutopilotStatus snapshot here every tick. */
+    AUTOPILOT_STATUS: 107,
+    /** autopilot/money.ts writes its own pid here on start, clears it on exit. */
+    MONEY_PID: 108,
+    /** helpers/stockTrader.ts writes its own pid here on start, clears it on exit. */
+    STOCK_PID: 109,
+    /** The share-RAM supervisor writes its own pid here while ns.share() threads are deployed. */
+    SHARE_PID: 110,
 } as const;
