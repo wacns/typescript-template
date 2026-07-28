@@ -87,6 +87,23 @@ export const WORLD_DAEMON = {
     ports: 5,
 };
 
+/**
+ * Home RAM below which the autopilot cannot usefully run.
+ *
+ * A fresh BitNode gives home 8GB. The daemon costs ~7.35GB, which leaves too little for the
+ * hacking loop (~6.35GB) AND too little for rpc/dodge, whose helpers each need at least the 1.6GB
+ * script base cost. Starting it there produces a silent deadlock: the daemon holds the RAM, the
+ * hacking loop never starts, nothing earns money or experience, and it waits forever on a hacking
+ * level that will never arrive.
+ *
+ * So the correct opening move on a fresh node is the hacking loop ALONE. Once it has funded a
+ * couple of home upgrades the autopilot can take over.
+ */
+export const MIN_HOME_RAM = 32;
+
+/** Free RAM the daemon wants to leave behind for dodge helpers and the hacking loop. */
+export const AUTOPILOT_HEADROOM = 8;
+
 /** Favor needed before donating to a faction is possible (CONSTANTS.BaseFavorToDonate). */
 export const FAVOR_TO_DONATE = 150;
 

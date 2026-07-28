@@ -7,6 +7,7 @@ import {WACNOS_CSS} from "WacnOS/ui/style";
 import {Banner, CategoryRow, Cycler, MeterBar, Row, TelemetryRow, Toggle} from "WacnOS/ui/controls";
 import {ROUTE_IDS, ROUTE_LABELS} from "WacnOS/autopilot/route";
 import {clearMarker, readMarker} from "WacnOS/autopilot/resume";
+import {AUTOPILOT_HEADROOM, MIN_HOME_RAM} from "WacnOS/autopilot/phases";
 
 const HACKLOOP_SCRIPT = "WacnOS/launcher/hackloop.js";
 const AUTOPILOT_SCRIPT = "WacnOS/autopilot/daemon.js";
@@ -135,11 +136,24 @@ function resumeAfterRestart(ns: NS, config: WacnOSConfig): void {
     if (config.autopilotEnabled || relaunched || marker) startAutopilot(ns);
 }
 
+/**
+ * Starts the autopilot, refusing when home is too small for it to actually work.
+ *
+ * "Enough RAM to load" is not the same as "enough RAM to run". The daemon needs room left over
+ * afterwards for the hacking loop and for rpc/dodge helpers - without that it holds home hostage
+ * and nothing progresses. See MIN_HOME_RAM in autopilot/phases.ts.
+ */
 function startAutopilot(ns: NS): boolean {
+    const homeRam = ns.getServerMaxRam("home");
+    if (homeRam < MIN_HOME_RAM) {
+        ns.toast(`WacnOS: autopilot needs ${MIN_HOME_RAM}GB home RAM (have ${homeRam}GB) - running the hacking loop alone until then.`, "warning");
+        return false;
+    }
+
     const ramNeeded = ns.getScriptRam(AUTOPILOT_SCRIPT);
-    const ramFree = ns.getServerMaxRam("home") - ns.getServerUsedRam("home");
-    if (ramNeeded <= 0 || ramFree < ramNeeded) {
-        ns.toast(`WacnOS: not enough home RAM to start the autopilot (needs ${ramNeeded.toFixed(2)}GB).`, "error");
+    const ramFree = homeRam - ns.getServerUsedRam("home");
+    if (ramNeeded <= 0 || ramFree < ramNeeded + AUTOPILOT_HEADROOM) {
+        ns.toast(`WacnOS: needs ${(ramNeeded + AUTOPILOT_HEADROOM).toFixed(1)}GB free on home to start the autopilot (have ${ramFree.toFixed(1)}GB).`, "error");
         return false;
     }
     return ns.exec(AUTOPILOT_SCRIPT, "home", 1) > 0;

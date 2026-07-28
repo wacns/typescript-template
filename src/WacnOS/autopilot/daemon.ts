@@ -5,7 +5,7 @@ import {AutopilotStatus, Phase, publishAutopilotStatus} from "WacnOS/status";
 import {nextBitNode, routeLabel} from "WacnOS/autopilot/route";
 import {GameSnapshot, snapshot} from "WacnOS/bridge/gamestate";
 import {decide, Decision} from "WacnOS/autopilot/decide";
-import {DAEDALUS, worldDaemonHacking, WORLD_DAEMON} from "WacnOS/autopilot/phases";
+import {DAEDALUS, MIN_HOME_RAM, worldDaemonHacking, WORLD_DAEMON} from "WacnOS/autopilot/phases";
 import {INVITE_ALLOWLIST} from "WacnOS/autopilot/phases";
 import {guarded, guardState} from "WacnOS/dom/guard";
 import {
@@ -50,6 +50,19 @@ export async function main(ns: NS): Promise<void> {
     ns.ui.openTail();
     ns.ui.setTailTitle("WacnOS - Autopilot");
     ns.ui.resizeTail(620, 340);
+
+    // Refuse to start into a deadlock. On a fresh node this script would occupy nearly all of
+    // home, leaving nothing for the hacking loop or even for a single dodge helper - so it would
+    // hold the RAM while nothing earned money or experience, waiting forever on a hacking level
+    // that could never rise. The hacking loop alone is the correct opening move.
+    const homeRam = ns.getServerMaxRam("home");
+    if (homeRam < MIN_HOME_RAM) {
+        ns.tprint(`ERROR WacnOS autopilot needs ${MIN_HOME_RAM}GB of home RAM (have ${homeRam}GB).`);
+        ns.tprint("      Run WacnOS/launcher/hackloop.js on its own until home is upgraded;");
+        ns.tprint("      the autopilot would otherwise starve its own workers and stall.");
+        ns.toast(`WacnOS autopilot needs ${MIN_HOME_RAM}GB home RAM (have ${homeRam}GB)`, "warning", null);
+        return;
+    }
 
     ns.clearPort(WacnPorts.AUTOPILOT_PID);
     ns.writePort(WacnPorts.AUTOPILOT_PID, ns.pid);

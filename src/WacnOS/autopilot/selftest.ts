@@ -11,7 +11,7 @@ import {terminal} from "WacnOS/dom/terminal";
 import {clickBitVersePortal, techVendorFor} from "WacnOS/dom/actions";
 import {casinoWinnings} from "WacnOS/dom/casino";
 import {FACTION_SERVERS, isBackdoored, pathTo} from "WacnOS/autopilot/backdoor";
-import {BN1_LADDER, CITY_FACTIONS, DAEDALUS, INVITE_ALLOWLIST, worldDaemonHacking} from "WacnOS/autopilot/phases";
+import {BN1_LADDER, CITY_FACTIONS, DAEDALUS, INVITE_ALLOWLIST, MIN_HOME_RAM, worldDaemonHacking} from "WacnOS/autopilot/phases";
 import {planPurchases, repGoalFor} from "WacnOS/autopilot/plan";
 import {decide} from "WacnOS/autopilot/decide";
 import {nextBitNode, ROUTE_IDS} from "WacnOS/autopilot/route";
@@ -139,6 +139,22 @@ function buildChecks(ns: NS, version: string, active: boolean): Check[] {
                 const readBack = readAutopilotStatus(ns);
                 if (existing) publishAutopilotStatus(ns, existing); // don't clobber a live daemon
                 return readBack?.label === "selftest" ? pass() : fail("status did not round-trip");
+            },
+        },
+        {
+            milestone: "M0  config / ports / status",
+            name: "home has enough RAM to actually run the autopilot",
+            verify: () => {
+                const homeRam = ns.getServerMaxRam("home");
+                const daemon = ns.getScriptRam("WacnOS/autopilot/daemon.js");
+                const hackloop = ns.getScriptRam("WacnOS/launcher/hackloop.js");
+                const detail = `home ${homeRam}GB; daemon ${daemon}GB + hackloop ${hackloop}GB + dodge headroom`;
+
+                if (homeRam >= MIN_HOME_RAM) return pass(detail);
+                // Not a failure - it's the expected state on a fresh node, and the guard in
+                // WLoader/daemon refuses to start rather than deadlocking. But it IS the reason
+                // the autopilot won't come up, so say so plainly.
+                return warn(`${detail} - run hackloop.js alone until home reaches ${MIN_HOME_RAM}GB`);
             },
         },
         {
