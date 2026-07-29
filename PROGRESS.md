@@ -115,8 +115,15 @@ Reproduced identically on main and the feature branch, so it's environmental, no
   impossible otherwise. Its work is preserved unmerged on `claude/feature-latest`: a
   `hasSingularityAccess()` helper (`src/lib/singularity-access.ts`) refactoring deploy.ts and
   scan-install-backdoor.ts, plus a `queue/2_testing/task-latest.md` spec, and untracked
-  `.claude-pipeline/state.json` + stub PROGRESS.md. If this agent is yours, know that it uses
-  conflicting pipeline conventions and races the real one; its branch is unreviewed and
-  unverified. If it is not yours, treat the binary as hostile and inspect before deleting.
+  `.claude-pipeline/state.json` + stub PROGRESS.md. Final update: just before being stopped
+  (13:17:57) the agent cleanly repaired the commit mixup itself — it reset its branch, split the
+  organizer's PROGRESS.md edit into its own attributed commit (0487a54), and committed its
+  refactor separately (5e0c7a2, "Replace deploy.ts 80 GB Singularity probe with shared 1 GB
+  helper"). It appears to be a cooperative task-driven developer agent, most likely launched
+  deliberately by you at 13:13. It was stopped anyway because two pipelines doing concurrent git
+  operations in one checkout is unworkable — the 13:05 queue-untracking attempt remains
+  unattributed and worth keeping in mind. Decide: relaunch it (ideally in its own clone/worktree),
+  review/merge `claude/feature-latest` (the deploy.ts RAM fix looks genuinely valuable but is
+  unverified), and whether the 13:05 git anomaly was you.
 - A human should decide deliberately whether queue files belong in git (they currently do, and
   the pipeline's paper trail depends on it).
