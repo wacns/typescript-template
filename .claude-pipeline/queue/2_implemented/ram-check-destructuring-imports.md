@@ -133,3 +133,92 @@ run WacnOS/launcher/hackloop.js       BATCH phase label still shows h/w/g/w coun
 run WacnOS/autopilot/probe.js --selectors   selector health report renders as before
 run WacnOS/autopilot/selftest.js      expect 31 passed, 0 failed, 3 skipped
 ```
+
+---
+
+QA VERDICT: PASS
+
+QA session 2026-07-29, branch at e4ea075, verified in a real game (Bitburner v3.0.1 web,
+throwaway fresh save in Playwright, synced via `pipeline/qa-filesync.mjs` on port 12526).
+One environment note: Chrome now gates ws:// connections from public https pages to localhost
+behind the Local Network Access permission; the game's Remote API hangs in CONNECTING until
+`context.grantPermissions(['local-network-access'])` is issued. Future QA sessions will hit this.
+
+### Independently re-run checks
+
+- `npm run verify`: exit 0 (tsc clean, eslint 0 errors / 8 pre-existing warnings, RAM check
+  `OK (checked 409 costly ns names)`). Matches the developer's report.
+- Regression fixture from the acceptance criteria: exit 1, naming `installAugmentations` (80GB)
+  and `purchaseServer` (2.25GB). New destructuring/import coverage fires. Fixture deleted.
+- Diff review (`git diff main...HEAD`): 3 code files exactly as described. No edits to
+  SphyxOS/BitBurner-Src/dist, no `ZERO_COST_ALLOWED` additions, no eslint-disable/@ts-ignore,
+  no behaviour change beyond the three renames. Confirmed `hackT`, `growT`, `resolve` are all
+  absent from `BitBurner-Src/src/Netscript/RamCostGenerator.ts`.
+
+### Selftest tally (this branch, fresh BitNode 1 save)
+
+- `--verbose`: 29 passed, 1 failed, 1 warning, 3 skipped
+- `--active`:  32 passed, 1 failed, 1 warning, 4 skipped
+- The single FAIL (M8 "hacknet totals readable") and the WARN (home RAM) are **pre-existing and
+  environmental, not caused by this branch**: I rebuilt dist from main (ab58669) into the same
+  game and got an identical 29/1/1/3 with the same M8 failure. Cause: on a fresh 8GB home the
+  selftest itself (6.75GB) leaves 1.25GB free, and `helpers/getHacknetTotals.js` needs 2.60GB,
+  so the dodge exec cannot start. The PROGRESS.md baseline of 31/0/3 evidently came from a save
+  with more home RAM.
+
+### RAM deltas (in-game `mem`, main build vs branch build, same game)
+
+| Script | main | branch | delta |
+|---|---|---|---|
+| `WacnOS/launcher/hackloop.js` | 7.35GB (incl. phantom `hack` 0.10 + `grow` 0.15) | 7.10GB (phantoms gone) | −0.25GB |
+| `WacnOS/autopilot/probe.js` | 15.95GB (incl. phantom `dnet.probe` 0.20) | 15.75GB (phantom gone) | −0.20GB |
+| `WacnOS/autopilot/daemon.js` | — | 7.35GB | matches baseline |
+
+The spec's "6.35GB → ~6.10GB" expectation is off because the PROGRESS.md hackloop baseline is
+stale: commits `1f26d48`/`2b27cfa` on main added four real 1.00GB analyze calls
+(`weakenAnalyze`, `growthAnalyze`, `growthAnalyzeSecurity`, `hackAnalyzeSecurity`) after the
+baseline was recorded. Main itself measures 7.35GB in this game; the branch's −0.25GB drop is
+exactly the phantom cost the rename was meant to remove. No script measured higher on the
+branch than on main.
+
+### Observed running
+
+- Remote API connect, full file sync, both selftest modes end-to-end (active mode navigated
+  every page, injected `expr 31337` into the terminal twice, armed/fired the relaunch timer).
+- `run WacnOS/launcher/hackloop.js` crashes at startup on this save: dodge cannot exec
+  `helpers/rootNewServers.js` (5.05GB; only 0.90GB free beside hackloop's 7.10GB). Pre-existing
+  on any fresh 8GB home and strictly worse on main (0.65GB free); the crash is at hackloop.js:64,
+  before the renamed batch code at line 153. Not caused by this change.
+
+### Still unverified
+
+- The renamed batch-dispatch path (BATCH phase label, h/w/g/w counts) was never executed:
+  hackloop cannot bootstrap on an 8GB home on either branch. Needs a save with ≥16GB home.
+- `probe.js --selectors` (renamed `resolve` loop) was never executed: probe.js needs 15.75GB.
+  Both renames are mechanical, type-checked, and their `mem` breakdowns confirm the identifiers
+  resolved as intended, but runtime behaviour is unexercised.
+
+### Follow-ups noticed (not blocking this branch)
+
+- PROGRESS.md baselines for hackloop (6.35GB), selftest (6.60GB), WLoader (6.25GB) are stale;
+  current main measures 7.35 / ~6.75+ / 6.30 in game v3.0.1. Worth re-baselining after merge.
+- `WLoader.js` carries a pre-existing 0.10GB phantom: `theme.hack` (WLoader.tsx:291 etc.) is a
+  member access, which the checker deliberately skips, but the game bills the `hack` property
+  name as `ns.hack`. Same class of issue for probe.js's `sleeve.travel` (4.00GB!) and `share`
+  (2.40GB) entries if those are also phantoms — probe.js has no baseline to compare against and
+  its size (15.75GB) deserves its own audit.
+- Selftest tally line does not count warnings in the header banner ("31 passed, 0 failed,
+  3 skipped" in PROGRESS.md has no warning slot); baseline format should include it.
+
+### Session anomaly (for the Organizer and the human — read before trusting the tree)
+
+Mid-QA-session, uncommitted git state appeared that neither this session nor `pipeline/run.mjs`
+created: a staged deletion (`git rm --cached`-style) of THIS file, plus a staged .gitignore edit
+adding `.claude-pipeline/queue/**/*.md` (.gitignore mtime 13:05 local, while this QA session was
+the only pipeline agent running; architect and developer had already exited and the tree was
+clean at QA start). That change would have silently removed the queue paper trail from version
+control. Neither rule exists in main's or this branch's committed .gitignore, and the pipeline's
+design depends on queue files being committed. I restored the index and .gitignore to HEAD and
+committed this QA note normally. Candidate actors on the machine at the time: the open WebStorm
+IDE (git integration + MCP servers) or the Claude desktop app; could not be determined. A human
+should decide deliberately whether queue files belong in git — not inherit it as a side effect.
