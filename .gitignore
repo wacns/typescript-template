@@ -9,3 +9,9 @@ build/sphyxos-version-beta.txt
 .claude-pipeline/pipeline.log
 filesync-qa.json
 .playwright-mcp/
+
+# Artifacts from the standalone .NET orchestrator (Autonomous-Enhancement-Claude)
+Autonomous-Enhancement-Claude.exe
+Autonomous-Enhancement-Claude.pdb
+.claude-pipeline/state.json
+.claude-pipeline/PROGRESS.md
