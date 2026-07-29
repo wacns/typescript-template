@@ -19,19 +19,28 @@ export function openAvailablePorts(ns: NS, target: string): number {
     return portsOpened;
 }
 
-export function ensureRootAccess(ns: NS, target: string): boolean {
+/**
+ * Roots a server if possible.
+ *
+ * `verbose` defaults to false deliberately. This is called every tick, for every server on the
+ * network, by rootNewServers.js and the autopilot - and early on, most servers are unrootable
+ * because the port crackers haven't been bought yet. Announcing each expected failure to the
+ * terminal buried real output under hundreds of identical lines. Failing quietly is correct here:
+ * "not yet rootable" is the normal state, not an error, and the caller reports the count.
+ */
+export function ensureRootAccess(ns: NS, target: string, verbose = false): boolean {
     if (ns.hasRootAccess(target)) return true;
 
     const requiredLevel = ns.getServerRequiredHackingLevel(target);
     if (requiredLevel > ns.getPlayer().skills.hacking) {
-        ns.tprint(`Cannot root ${target}: requires hacking level ${requiredLevel}.`);
+        if (verbose) ns.tprint(`Cannot root ${target}: requires hacking level ${requiredLevel}.`);
         return false;
     }
 
     const portsOpened = openAvailablePorts(ns, target);
     const portsRequired = ns.getServerNumPortsRequired(target);
     if (portsOpened < portsRequired) {
-        ns.tprint(`Cannot root ${target}: only ${portsOpened}/${portsRequired} ports could be opened.`);
+        if (verbose) ns.tprint(`Cannot root ${target}: only ${portsOpened}/${portsRequired} ports could be opened.`);
         return false;
     }
 

@@ -17,6 +17,21 @@ const PURCHASE_SERVERS = "WacnOS/helpers/purchaseServers.js";
 const SPACING_MS = 200;
 const HACK_FRACTION = 0.25; // steal ~25% of max money per batch - conservative, keeps thread counts modest
 
+/**
+ * Money fraction at which the loop stops prepping and starts batching.
+ *
+ * Not 0.99. Requiring a near-full server before taking anything creates a bootstrap deadlock:
+ * on a fresh node the only rootable targets are the 0-port servers, growing one of those to its
+ * cap takes a long time, and until that finishes the player earns NOTHING - so there is no money
+ * for the TOR router, hence no port crackers, hence no other servers to hack. Observed live:
+ * 30+ minutes at exactly the starting $1.262k while the loop dutifully grew a server it was never
+ * allowed to touch.
+ *
+ * Batching from a partly-grown server is only slightly less efficient per cycle, because each
+ * batch re-grows what it takes. Income now beats theoretical throughput later.
+ */
+const PREP_MONEY_FRACTION = 0.6;
+
 interface ServerBudget {
     hostname: string;
     threads: number;
@@ -87,7 +102,7 @@ export async function main(ns: NS): Promise<void> {
             dispatch(ns, budgets, target, "weaken", threads, 0);
             waitMs = ns.getWeakenTime(target) + SPACING_MS;
             phaseLabel = `PREP WEAKEN (${threads})`;
-        } else if (maxMoney > 0 && curMoney < maxMoney * 0.99) {
+        } else if (maxMoney > 0 && curMoney < maxMoney * PREP_MONEY_FRACTION) {
             // Grow and weaken have to be sized TOGETHER against the budget. Sizing weaken to
             // offset the full ideal grow first is wrong: when the ideal grow exceeds what we can
             // afford, weaken alone consumes the entire budget and grow gets zero threads, so the
