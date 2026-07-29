@@ -55,10 +55,11 @@ Needs a human with the game open:
 - [x] Verified in a real game: terminal injection, backdoor crawl, faction join, faction work,
       augmentation purchase, augmentation install, TOR + program purchase, casino RNG model
 - [x] `npm run verify` gate, including the RAM-collision checker
-- [x] RAM checker extended to destructuring bindings + named import specifiers
-      (branch `claude/ram-check-destructuring-imports`, unmerged — renames `hack`/`grow` in
-      hackloop.ts and `probe` in probe.ts; human should re-run `mem WacnOS/launcher/hackloop.js`,
-      expected 6.35GB → ~6.10GB, and the self-test, before merging)
+- [x] RAM checker extended to destructuring bindings + named import specifiers; `hack`/`grow`
+      renamed in hackloop.ts, `probe` in probe.ts. **Merged to main** (d4384dd) on a QA PASS
+      verified in a real game (v3.0.1, fresh BitNode 1 via Playwright): phantom costs confirmed
+      gone in-game (hackloop −0.25GB, probe −0.20GB vs a main build in the same game). Full QA
+      record is in the merge commit's queue file.
 - [x] Game source moved to the `BitBurner-Src` submodule; hooks and skill repointed
 
 ## In progress
@@ -67,6 +68,11 @@ Needs a human with the game open:
 
 ## Next queue
 
+- [ ] Audit `probe.js` (15.75GB measured, no prior baseline): checker skips member accesses, but
+      the game bills property names too — `sleeve.travel` (4.00GB), `share` (2.40GB) and
+      WLoader's `theme.hack` (0.10GB) may be phantoms of the same class the last merge removed
+- [ ] Selftest M8 fails on a fresh 8GB home: selftest (6.75GB) leaves too little free to exec
+      `helpers/getHacknetTotals.js` (2.60GB); also add a warnings slot to the tally banner
 - [ ] BitVerse portal remains the only never-executed action (ends the node; needs a human)
 - [ ] `dom/fiber.ts` `deepFind` is only exercised by travel; no other caller yet
 - [ ] Casino farm loop has never run to the $10b cap in one go
@@ -74,15 +80,30 @@ Needs a human with the game open:
 
 ## Known-good baselines
 
-Measured in-game, BitNode 1, so a regression is obvious:
+Measured in-game, BitNode 1. Re-measured 2026-07-29 by QA in game v3.0.1 (fresh save); scripts
+without a fresh figure keep the older one:
 
 | Script | RAM |
 |---|---|
 | `WacnOS/autopilot/daemon.js` | 7.35GB |
-| `WacnOS/autopilot/selftest.js` | 6.60GB |
-| `WacnOS/WLoader.js` | 6.25GB |
-| `WacnOS/launcher/hackloop.js` | 6.35GB |
-| `WacnOS/launcher/procure.js` | 2.25GB |
-| `Workers/heavy-worker.js` | 3.45GB |
+| `WacnOS/autopilot/selftest.js` | 6.75GB |
+| `WacnOS/WLoader.js` | 6.30GB |
+| `WacnOS/launcher/hackloop.js` | 7.10GB |
+| `WacnOS/autopilot/probe.js` | 15.75GB |
+| `WacnOS/launcher/procure.js` | 2.25GB (stale, pre-v3.0.1) |
+| `Workers/heavy-worker.js` | 3.45GB (stale, pre-v3.0.1) |
 
-Self-test on a clean BitNode 1: **31 passed, 0 failed, 3 skipped**.
+Self-test on a clean BitNode 1: **31 passed, 0 failed, 3 skipped** — but only with >8GB home
+RAM. On a fresh 8GB home the expected tally is **29 passed, 1 failed (M8), 1 warning,
+3 skipped**: the M8 hacknet check needs 2.60GB free that the selftest itself doesn't leave.
+Reproduced identically on main and the feature branch, so it's environmental, not a regression.
+
+## Needs human attention (2026-07-29 organizer session)
+
+- Two unexplained untracked binaries appeared in the repo root during the QA session:
+  `Autonomous-Enhancement-Claude.exe` (83MB) + `.pdb`, created 13:08 local — minutes after the
+  git anomaly QA reported (something staged a deletion of the queue file plus a .gitignore rule
+  hiding `.claude-pipeline/queue/**/*.md`; QA reverted it). No pipeline agent creates binaries.
+  Left untouched for a human to inspect and delete; do not run it.
+- A human should decide deliberately whether queue files belong in git (they currently do, and
+  the pipeline's paper trail depends on it).
