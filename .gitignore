@@ -8,3 +8,4 @@ build/sphyxos-version-beta.txt
 .idea/
 .claude-pipeline/pipeline.log
 filesync-qa.json
+.playwright-mcp/

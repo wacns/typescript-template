@@ -107,7 +107,8 @@ You are running unattended in a headless session. Read .claude-pipeline/AGENT.md
 first and follow them exactly.
 
 Two rules override everything else:
-- NEVER merge to main, force-push, or reset main.
+- NEVER force-push or reset main. Only the ORGANIZER may merge, and only on a QA verdict that
+  carries real evidence; every other role leaves main untouched.
 - NEVER claim something is tested, verified, working, or fixed unless you actually ran a check
   that proves it. \`npm run verify\` proves it compiles, lints, and has no RAM-cost name
   collisions - it does NOT prove the behaviour is correct, because correctness here means
@@ -169,12 +170,19 @@ Check out its branch, then:
    c. Playwright: navigate to https://bitburner-official.github.io/
       This is a THROWAWAY game in Playwright's own browser profile, not the developer's save.
       Dismiss any intro dialog.
-   d. Options -> Remote API -> set port 12526 -> Connect. Files sync in.
+   d. GRANT LOCAL NETWORK ACCESS FIRST, or the next step silently hangs. Chrome gates ws://
+      connections from a public https page to localhost behind the Local Network Access
+      permission, and the game's Remote API sits in CONNECTING forever without it - it does not
+      error, so it looks like the sync server is broken when it is not. Issue
+      context.grantPermissions(['local-network-access']) for https://bitburner-official.github.io
+      before connecting. If the tool surface does not expose grantPermissions, use
+      browser_run_code_unsafe to call it on the page's context.
+   e. Options -> Remote API -> set port 12526 -> Connect. Files sync in.
    e. In the terminal run: \`run WacnOS/autopilot/selftest.js --verbose\`
       Read the whole output. Then \`run WacnOS/autopilot/selftest.js --active\`.
    f. \`mem\` the scripts your change could affect and compare against the baseline table in
       PROGRESS.md. An unexplained RAM increase is a FAIL - it usually means a name collision.
-   g. If the change touches the hacking loop, autopilot, or DOM layer, actually watch it run for
+   h. If the change touches the hacking loop, autopilot, or DOM layer, actually watch it run for
       a minute and confirm it does something. A loop that reports a healthy phase while earning
       nothing has happened here before.
 
