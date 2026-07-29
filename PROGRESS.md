@@ -55,6 +55,10 @@ Needs a human with the game open:
 - [x] Verified in a real game: terminal injection, backdoor crawl, faction join, faction work,
       augmentation purchase, augmentation install, TOR + program purchase, casino RNG model
 - [x] `npm run verify` gate, including the RAM-collision checker
+- [x] RAM checker extended to destructuring bindings + named import specifiers
+      (branch `claude/ram-check-destructuring-imports`, unmerged — renames `hack`/`grow` in
+      hackloop.ts and `probe` in probe.ts; human should re-run `mem WacnOS/launcher/hackloop.js`,
+      expected 6.35GB → ~6.10GB, and the self-test, before merging)
 - [x] Game source moved to the `BitBurner-Src` submodule; hooks and skill repointed
 
 ## In progress
