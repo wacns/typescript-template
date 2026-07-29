@@ -14,11 +14,15 @@
  *   node pipeline/run.mjs --dry-run       print the prompts, call nothing
  *   node pipeline/run.mjs --once          a single cycle
  *
- * THE MERGE GATE IS NOT HERE. The Organizer never merges to main. It evaluates, records, and
- * leaves a branch for a human to verify in a running game - because `npm run verify` passing is
- * a weak signal in this project (see PROGRESS.md). An autonomous loop that merged on green would
- * happily ship the RAM-collision, deadlock and never-submitted-command classes of bug that have
- * already occurred here, all of which were green under tsc and eslint.
+ * THE MERGE GATE IS A RUNNING GAME, NOT tsc. QA drives Playwright against a throwaway Bitburner
+ * instance fed by a second filesync on port 12526, runs the in-game self-test, and compares
+ * measured RAM against the baselines in PROGRESS.md. The Organizer merges only on a verdict backed
+ * by a real selftest tally.
+ *
+ * That indirection is the whole point. Every serious defect this project has hit - RAM name
+ * collisions costing 218GB, a startup deadlock, a relaunch that typed a command without submitting
+ * it, batches allocating zero hack threads - was green under tsc, eslint AND the RAM checker, and
+ * only visible in a running game. A loop gated on static analysis would have shipped all of them.
  */
 
 import {execFile, execFileSync} from 'node:child_process';
@@ -147,37 +151,65 @@ Leave the working tree clean. Do not merge.`,
 
     qa: (slug) => `${AGENT_CONTRACT}
 
-You are QA. Review the change recorded in .claude-pipeline/queue/2_implemented/${slug}.
+You are QA. Verify the change recorded in .claude-pipeline/queue/2_implemented/${slug} - including
+IN A RUNNING GAME. You have Playwright browser tools; use them.
 
-Check out its branch and:
-1. Run \`npm run verify\` yourself. Do not trust the developer's report.
-2. Read the actual diff (git diff main...HEAD). Look for: behaviour changes smuggled into a
-   refactor, checks weakened to pass (disabled eslint rules, @ts-ignore, names added to
-   ZERO_COST_ALLOWED), edits to src/SphyxOS/ or BitBurner-Src/, and any claim in the handoff note
-   that the diff does not support.
-3. Sanity-check the reasoning, not just the mechanics: does this change actually do what the spec
-   asked, and is it worth keeping?
+Check out its branch, then:
 
-Append a section to the same file starting with exactly "QA VERDICT: PASS" or "QA VERDICT: FAIL",
-followed by your findings. Be specific and be willing to fail it - a wrong change that passes
-review is far more expensive here than a rejected one.`,
+1. \`npm run verify\`. Do not trust the developer's report; run it yourself.
+
+2. Read the diff (git diff main...HEAD). Reject: behaviour changes smuggled into a refactor,
+   checks weakened to pass (disabled eslint rules, @ts-ignore, names added to ZERO_COST_ALLOWED),
+   edits to src/SphyxOS/ or BitBurner-Src/, and any claim the diff does not support.
+
+3. IN-GAME VERIFICATION. Build and run it against a real game:
+   a. \`npx tsc\` so dist/ matches the branch.
+   b. Start the QA sync server in the background: \`node pipeline/qa-filesync.mjs\`
+      It serves dist/ on port 12526. Do NOT use 12525 - that is the developer's live game.
+   c. Playwright: navigate to https://bitburner-official.github.io/
+      This is a THROWAWAY game in Playwright's own browser profile, not the developer's save.
+      Dismiss any intro dialog.
+   d. Options -> Remote API -> set port 12526 -> Connect. Files sync in.
+   e. In the terminal run: \`run WacnOS/autopilot/selftest.js --verbose\`
+      Read the whole output. Then \`run WacnOS/autopilot/selftest.js --active\`.
+   f. \`mem\` the scripts your change could affect and compare against the baseline table in
+      PROGRESS.md. An unexplained RAM increase is a FAIL - it usually means a name collision.
+   g. If the change touches the hacking loop, autopilot, or DOM layer, actually watch it run for
+      a minute and confirm it does something. A loop that reports a healthy phase while earning
+      nothing has happened here before.
+
+   You have the game's own source at BitBurner-Src/. When behaviour looks wrong, read the
+   relevant file there and determine what the game actually does rather than guessing.
+
+4. Kill the qa-filesync process and close the browser when done.
+
+Append to the same file a section starting with exactly "QA VERDICT: PASS" or "QA VERDICT: FAIL",
+then: the selftest tally (passed/failed/skipped), any RAM deltas, what you observed running, and
+anything still unverified. Be willing to fail it. A selftest that cannot run at all is a FAIL,
+not a skip.`,
 
     organizer: () => `${AGENT_CONTRACT}
 
-You are the ORGANIZER. Do NOT merge anything.
+You are the ORGANIZER.
 
 For each file in .claude-pipeline/queue/2_implemented/:
-- QA VERDICT: PASS -> leave the branch for human review. If \`gh\` is available and no PR exists
-  for that branch, open one whose body is the handoff note, clearly stating what is unverified and
-  which in-game commands confirm it. Record it in PROGRESS.md under Completed as awaiting
-  in-game verification.
-- QA VERDICT: FAIL -> move the file to .claude-pipeline/queue/3_blocked/ with the reason. If the
-  same slug has already failed twice, delete the branch and note in PROGRESS.md that the task was
-  abandoned, so the loop stops retrying a bad idea.
-- No verdict -> leave it alone for the next cycle.
 
-Then update PROGRESS.md so the next session starts with an accurate picture: refresh In progress
-and Next queue, and keep it short. Finish on main with a clean tree.`,
+- QA VERDICT: PASS -> merge its branch into main with --no-ff, then delete the branch. Before
+  merging, confirm for yourself that the QA note actually contains a selftest tally from a real
+  game. A PASS with no evidence of the game having run is NOT a pass: treat it as FAIL, because
+  the whole point of that step is that static checks do not catch this project's real defects.
+  After merging, run \`npm run verify\` on main. If it fails, revert the merge commit immediately
+  (git revert -m 1 <sha>) and record what happened - main must always be green.
+
+- QA VERDICT: FAIL -> move the file to .claude-pipeline/queue/3_blocked/ with the reason. If the
+  same slug has already failed twice, delete its branch and note in PROGRESS.md that the task was
+  abandoned, so the loop stops retrying a bad idea.
+
+- No verdict -> leave it for the next cycle.
+
+Then update PROGRESS.md so the next session starts with an accurate picture: move finished work to
+Completed, refresh In progress and Next queue, and update the RAM baseline table if a merge
+changed any measured figure. Keep it short. Finish on main with a clean tree.`,
 };
 
 async function cycle(n, total) {
@@ -197,6 +229,17 @@ async function cycle(n, total) {
     }
 
     await runAgent('architect', ROLES.architect());
+
+    // A dry run writes no proposal, so the real flow would stop here - which would defeat the
+    // point of inspecting the prompts before committing to a run. Show all four against a
+    // placeholder instead.
+    if (DRY_RUN) {
+        const sample = 'example-task.md';
+        await runAgent('developer', ROLES.developer(sample));
+        await runAgent('qa', ROLES.qa(sample));
+        await runAgent('organizer', ROLES.organizer());
+        return true;
+    }
 
     const proposed = mdFiles(PROPOSED);
     if (proposed.length === 0) {
@@ -228,7 +271,7 @@ async function main() {
     }
 
     log(`starting pipeline: ${CYCLES} cycle(s)${DRY_RUN ? ' (dry run)' : ''}`);
-    log('the organizer never merges to main; branches await human in-game verification');
+    log('merge gate: QA runs the self-test in a real game (Playwright + filesync on 12526)');
 
     for (let i = 1; i <= CYCLES; i++) {
         let ok;
