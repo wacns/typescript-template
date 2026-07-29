@@ -317,7 +317,10 @@ function LoaderApp({ns, initialConfig}: LoaderAppProps) {
             </CategoryRow>
 
             <CategoryRow title="Autopilot" open={isOpen("autopilot")} line={line} onToggle={() => toggleCategory("autopilot")}>
-                {autoStatus && (
+                {/* Only render telemetry while the daemon is actually running: the status port
+                    outlives the process that wrote it, so a stale snapshot would otherwise be
+                    shown as live state long after the autopilot stopped. */}
+                {autoRunning && autoStatus && (
                     <div className="wacnos-telemetry" style={{background: theme.backgroundsecondary, borderColor: line, marginBottom: 6}}>
                         <TelemetryRow label="phase" value={autoStatus.phase}
                                       valueColor={autoStatus.paused ? theme.error : theme.hack}/>
@@ -335,7 +338,7 @@ function LoaderApp({ns, initialConfig}: LoaderAppProps) {
                     </div>
                 )}
 
-                {autoStatus?.paused && (
+                {autoRunning && autoStatus?.paused && (
                     <Banner text={autoStatus.pausedReason || "autopilot paused"} color={theme.error}>
                         <button className="wacnos-toggle" style={{color: theme.success}}
                                 onClick={() => sendAutopilotCommand(ns, "resume")}>[RESUME]

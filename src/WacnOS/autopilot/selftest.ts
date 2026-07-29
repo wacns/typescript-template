@@ -137,7 +137,18 @@ function buildChecks(ns: NS, version: string, active: boolean): Check[] {
                 };
                 publishAutopilotStatus(ns, sample);
                 const readBack = readAutopilotStatus(ns);
-                if (existing) publishAutopilotStatus(ns, existing); // don't clobber a live daemon
+
+                // Restore only if a daemon is actually running to own that status; otherwise clear.
+                //
+                // Restoring whatever happened to be on the port is not good enough: the status
+                // port outlives the process that wrote it, so once a synthetic sample was left
+                // behind it got faithfully restored on every subsequent run and the loader kept
+                // rendering a phantom "BOOT / bridge DEGRADED" autopilot that was never running.
+                // A live daemon republishes within a tick anyway, so nothing is lost either way.
+                const daemonRunning = ns.peek(WacnPorts.AUTOPILOT_PID) !== "NULL PORT DATA";
+                if (daemonRunning && existing) publishAutopilotStatus(ns, existing);
+                else ns.clearPort(WacnPorts.AUTOPILOT_STATUS);
+
                 return readBack?.label === "selftest" ? pass() : fail("status did not round-trip");
             },
         },
