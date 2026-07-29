@@ -135,12 +135,22 @@ export async function main(ns: NS): Promise<void> {
             const rawHack = Math.max(1, Math.floor(HACK_FRACTION / hackPercent));
             const rawHackSecurity = ns.hackAnalyzeSecurity(rawHack, target);
             const rawWeaken1 = Math.max(1, Math.ceil(rawHackSecurity / weakenPerThread));
-            const rawGrow = Math.max(1, await dodge(ns, GET_GROW_THREADS, [target]) as number);
+
+            // Grow only has to REPLACE what this batch's hack takes. Sizing it to restore the
+            // server to full - which is what the prep-time helper computes - asks for hundreds of
+            // threads during a batch and, combined with the priority below, left nothing for hack.
+            const stolen = Math.min(0.95, rawHack * hackPercent);
+            const rawGrow = Math.max(1, Math.ceil(ns.growthAnalyze(target, 1 / (1 - stolen))));
             const rawGrowSecurity = ns.growthAnalyzeSecurity(rawGrow, target);
             const rawWeaken2 = Math.max(1, Math.ceil(rawGrowSecurity / weakenPerThread));
 
-            // Weakens matter most (keep the target prepped for next cycle), then grow, then hack.
-            const [weaken1, weaken2, grow, hack] = capToBudget([rawWeaken1, rawWeaken2, rawGrow, rawHack], totalThreads);
+            // HACK FIRST. It is the only action that earns money, so starving it produces a batch
+            // that runs forever and pays nothing - observed live as "BATCH (h0 w3 g956 w87)" with
+            // the player stuck at their starting balance. Its paired weaken comes next so security
+            // never runs away, then grow and its weaken take whatever remains; an under-grown
+            // server simply yields a little less next cycle, which is recoverable. An unhacked one
+            // yields nothing, which is not.
+            const [hack, weaken1, grow, weaken2] = capToBudget([rawHack, rawWeaken1, rawGrow, rawWeaken2], totalThreads);
 
             const T0 = Math.max(
                 timing.hackTime,
