@@ -150,7 +150,7 @@ export async function main(ns: NS): Promise<void> {
             // never runs away, then grow and its weaken take whatever remains; an under-grown
             // server simply yields a little less next cycle, which is recoverable. An unhacked one
             // yields nothing, which is not.
-            const [hack, weaken1, grow, weaken2] = capToBudget([rawHack, rawWeaken1, rawGrow, rawWeaken2], totalThreads);
+            const [hackT, weaken1, growT, weaken2] = capToBudget([rawHack, rawWeaken1, rawGrow, rawWeaken2], totalThreads);
 
             const T0 = Math.max(
                 timing.hackTime,
@@ -159,13 +159,13 @@ export async function main(ns: NS): Promise<void> {
                 timing.weakenTime - 3 * SPACING_MS,
             );
 
-            if (hack > 0) dispatch(ns, budgets, target, "hack", hack, T0 - timing.hackTime);
+            if (hackT > 0) dispatch(ns, budgets, target, "hack", hackT, T0 - timing.hackTime);
             if (weaken1 > 0) dispatch(ns, budgets, target, "weaken", weaken1, T0 + SPACING_MS - timing.weakenTime);
-            if (grow > 0) dispatch(ns, budgets, target, "grow", grow, T0 + 2 * SPACING_MS - timing.growTime);
+            if (growT > 0) dispatch(ns, budgets, target, "grow", growT, T0 + 2 * SPACING_MS - timing.growTime);
             if (weaken2 > 0) dispatch(ns, budgets, target, "weaken", weaken2, T0 + 3 * SPACING_MS - timing.weakenTime);
 
             waitMs = T0 + 4 * SPACING_MS + SPACING_MS;
-            phaseLabel = `BATCH (h${hack} w${weaken1} g${grow} w${weaken2})`;
+            phaseLabel = `BATCH (h${hackT} w${weaken1} g${growT} w${weaken2})`;
         }
 
         if (purchaseMode) await dodge(ns, PURCHASE_SERVERS);

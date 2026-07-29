@@ -550,10 +550,10 @@ function reportSelectors(ns: NS): void {
         ["BitVerse portal BN4", () => byAriaPrefix("BitNode-4:")],
     ];
 
-    for (const [label, probe] of checks) {
+    for (const [label, resolve] of checks) {
         let found = false;
         try {
-            found = !!probe();
+            found = !!resolve();
         } catch {
             found = false;
         }
