@@ -88,14 +88,32 @@ export async function main(ns: NS): Promise<void> {
             waitMs = ns.getWeakenTime(target) + SPACING_MS;
             phaseLabel = `PREP WEAKEN (${threads})`;
         } else if (maxMoney > 0 && curMoney < maxMoney * 0.99) {
-            const growThreads = Math.max(1, await dodge(ns, GET_GROW_THREADS, [target]) as number);
-            const growSecurity = ns.growthAnalyzeSecurity(growThreads, target);
-            const weakenThreads = Math.min(totalThreads, Math.max(1, Math.ceil(growSecurity / weakenPerThread)));
-            const affordGrow = Math.min(growThreads, Math.max(0, totalThreads - weakenThreads));
+            // Grow and weaken have to be sized TOGETHER against the budget. Sizing weaken to
+            // offset the full ideal grow first is wrong: when the ideal grow exceeds what we can
+            // afford, weaken alone consumes the entire budget and grow gets zero threads, so the
+            // server never actually grows and prep never finishes.
+            //
+            // Security rises linearly with grow threads, so one weaken offsets a fixed number of
+            // grows. Split the budget on that ratio and the pair stays balanced at any size.
+            const idealGrow = Math.max(1, await dodge(ns, GET_GROW_THREADS, [target]) as number);
+            const securityPerGrow = ns.growthAnalyzeSecurity(1, target);
+            const weakensPerGrow = securityPerGrow / weakenPerThread;
+
+            let growThreads = Math.min(idealGrow, Math.max(1, Math.floor(totalThreads / (1 + weakensPerGrow))));
+            let weakenThreads = Math.min(
+                totalThreads - growThreads,
+                Math.max(1, Math.ceil(ns.growthAnalyzeSecurity(growThreads, target) / weakenPerThread)),
+            );
+            // A one-thread budget can't do both; growing is the phase's actual purpose.
+            if (weakenThreads < 1) {
+                weakenThreads = 0;
+                growThreads = Math.min(idealGrow, totalThreads);
+            }
+
             if (weakenThreads > 0) dispatch(ns, budgets, target, "weaken", weakenThreads, 0);
-            if (affordGrow > 0) dispatch(ns, budgets, target, "grow", affordGrow, 0);
+            if (growThreads > 0) dispatch(ns, budgets, target, "grow", growThreads, 0);
             waitMs = Math.max(ns.getWeakenTime(target), ns.getGrowTime(target)) + SPACING_MS;
-            phaseLabel = `PREP GROW (${affordGrow}g / ${weakenThreads}w)`;
+            phaseLabel = `PREP GROW (${growThreads}g / ${weakenThreads}w)`;
         } else {
             const timing = await dodge(ns, GET_HACK_TIMING, [target]) as HackTiming;
             const hackPercent = Math.max(0.0001, timing.hackPercent);
