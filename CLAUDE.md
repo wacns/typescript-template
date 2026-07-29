@@ -42,8 +42,18 @@ React can be used in `.tsx` scripts via `ns.printRaw()`, importing `React` from 
 
 `NetscriptDefinitions.d.ts` is gitignored and must exist locally (even as an empty file) before running the sync — `filesync.json` has `definitionFile.update: true`, so the game overwrites it with fresh API typings on every connection. Don't hand-edit it; treat it as generated.
 
+## Verification
+
+`npm run verify` = `tsc --noEmit` + `eslint src` + `node build/check-ram-collisions.js`. It should exit 0; treat any failure as blocking.
+
+**It is necessary but not sufficient.** There is no test suite because correctness here means matching a running game's behaviour. Most real defects in this project have passed all three checks cleanly — RAM name-collisions, a 25GB `window` token, a startup deadlock, progression-gated selectors, a relaunch that typed a command without submitting it. The real test suite is `WacnOS/autopilot/selftest.js`, and it only runs inside Bitburner. Never call a behavioural change verified on the strength of `npm run verify` alone.
+
+`npm run check:ram` guards a trap specific to this game: Bitburner bills script RAM by resolving identifiers against the whole `ns` API tree **by name, ignoring namespaces**, so a local function named `workForFaction` silently costs 48GB. Before naming anything after a game concept, check `BitBurner-Src/src/Netscript/RamCostGenerator.ts`.
+
 ## Style
 
-ESLint is configured (`eslint:recommended` + `@typescript-eslint/recommended`, no custom rules) — run with `npm run lint`. No Prettier config exists.
+ESLint is configured (`eslint:recommended` + `@typescript-eslint/recommended`). Vendored `src/SphyxOS/`, `src/Loader.js` and `src/Dispatchers/archive/` are ignored; long-running daemons have `no-constant-condition` relaxed via an override, since `while (true)` with an inner `await` is the correct shape for a Netscript worker. No Prettier config exists.
 
-Note: `npm run lint` currently flags `no-constant-condition` on the intentional `while (true)` loop in `src/HackRelated/worker.ts` (a long-running Netscript worker loop, not a bug).
+## Autonomous work
+
+`.claude-pipeline/AGENT.md` holds the standing instructions for unattended sessions, and `PROGRESS.md` is the state handoff between them. Autonomous sessions work on `claude/<slug>` branches and never merge to `main` — the merge gate is a human running the self-test in a real game.

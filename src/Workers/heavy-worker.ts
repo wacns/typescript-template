@@ -49,7 +49,7 @@ const NUMERIC_CHARSET = "0123456789";
 const ALPHANUMERIC_CHARSET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const MAX_ORACLE_GUESSES = 600;
 
-// Yesn_t: every failed attempt returns per-position "yes"/"yesn't" feedback (exact match only, no
+// Yesn_t: every failed guessStr returns per-position "yes"/"yesn't" feedback (exact match only, no
 // misplaced info) for the whole attempted string. Solve each position independently by cycling through
 // the charset at that position (holding already-confirmed positions fixed) until it reports "yes".
 async function solveYesnt(ns: NS, neighbor: string, length: number, numeric: boolean): Promise<string | null> {
@@ -61,9 +61,9 @@ async function solveYesnt(ns: NS, neighbor: string, length: number, numeric: boo
         let solved = false;
         for (const c of charset) {
             guess[pos] = c;
-            const attempt = guess.join("");
-            const res = await ns.dnet.authenticate(neighbor, attempt);
-            if (res.success) return attempt;
+            const candidate = guess.join("");
+            const res = await ns.dnet.authenticate(neighbor, candidate);
+            if (res.success) return candidate;
 
             const feedback = String(res.data ?? "").split(",");
             if (feedback[pos] === "yes") {
@@ -76,7 +76,7 @@ async function solveYesnt(ns: NS, neighbor: string, length: number, numeric: boo
     return guess.join("");
 }
 
-// TimingAttack: every failed attempt's message reveals the index of the first character that doesn't
+// TimingAttack: every failed guessStr's message reveals the index of the first character that doesn't
 // match the real password (e.g. "... (3)"). Since we already know the true length from
 // details.passwordLength, solve it left-to-right: for each position, try charset characters until the
 // reported mismatch index moves past that position, confirming it's correct.
@@ -88,9 +88,9 @@ async function solveTimingAttack(ns: NS, neighbor: string, length: number, numer
     for (let pos = 0; pos < length; pos++) {
         let foundChar: string | null = null;
         for (const c of charset) {
-            const attempt = known + c;
-            const res = await ns.dnet.authenticate(neighbor, attempt);
-            if (res.success) return attempt;
+            const guessStr = known + c;
+            const res = await ns.dnet.authenticate(neighbor, guessStr);
+            if (res.success) return guessStr;
 
             const match = res.message.match(/\((-?\d+)\)/);
             const indexOfDiff = match ? parseInt(match[1]) : -1;

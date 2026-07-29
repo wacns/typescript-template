@@ -40,7 +40,7 @@ function generatePermutations(chars: string): string[] {
     return Array.from(results);
 }
 
-// DeepGreen (MastermindHint) is a real Mastermind game: each failed authenticate() attempt returns
+// DeepGreen (MastermindHint) is a real Mastermind game: each failed authenticate() guessStr returns
 // "exactCount,misplacedCount" feedback in res.data, scored the same way as classic Mastermind (exact
 // position matches, plus correct-but-misplaced characters, both accounting for duplicates). Above this
 // length the initial all-numeric candidate pool gets too large to build/filter practically. Its worst
@@ -48,17 +48,17 @@ function generatePermutations(chars: string): string[] {
 const MAX_MASTERMIND_LENGTH = 5;
 const MAX_MASTERMIND_GUESSES = 20;
 
-function getExactCorrectCharsCount(password: string, attempt: string): number {
+function getExactCorrectCharsCount(password: string, guessStr: string): number {
     let count = 0;
     for (let i = 0; i < password.length; i++) {
-        if (password[i] === attempt[i]) count++;
+        if (password[i] === guessStr[i]) count++;
     }
     return count;
 }
 
-function getMisplacedCorrectCharsCount(password: string, attempt: string): number {
-    const remainingPasswordChars = password.split("").filter((c, i) => c !== attempt[i]);
-    const remainingAttemptChars = attempt.split("").filter((c, i) => c !== password[i]);
+function getMisplacedCorrectCharsCount(password: string, guessStr: string): number {
+    const remainingPasswordChars = password.split("").filter((c, i) => c !== guessStr[i]);
+    const remainingAttemptChars = guessStr.split("").filter((c, i) => c !== password[i]);
 
     return remainingAttemptChars.filter((c, i) => {
         const isPresentInPassword = remainingPasswordChars.includes(c);
@@ -76,18 +76,18 @@ async function solveMastermind(ns: NS, neighbor: string, length: number): Promis
     }
 
     for (let guess = 0; guess < MAX_MASTERMIND_GUESSES && candidates.length > 0; guess++) {
-        const attempt = candidates[0];
-        const res = await ns.dnet.authenticate(neighbor, attempt);
-        if (res.success) return attempt;
+        const candidate = candidates[0];
+        const res = await ns.dnet.authenticate(neighbor, candidate);
+        if (res.success) return candidate;
 
         const [exactStr, misplacedStr] = String(res.data ?? "0,0").split(",");
         const exact = parseInt(exactStr) || 0;
         const misplaced = parseInt(misplacedStr) || 0;
 
         candidates = candidates.filter(c =>
-            c !== attempt &&
-            getExactCorrectCharsCount(c, attempt) === exact &&
-            getMisplacedCorrectCharsCount(c, attempt) === misplaced
+            c !== candidate &&
+            getExactCorrectCharsCount(c, candidate) === exact &&
+            getMisplacedCorrectCharsCount(c, candidate) === misplaced
         );
     }
     return null;
@@ -153,8 +153,8 @@ async function lightweightAuthenticate(ns: NS, neighbor: string, sendLog: (msg: 
             }
         }
     } else if (details.modelId === "Pr0verFl0") {
-        // BufferOverflow: the check compares the attempt's first half against its second half once the
-        // attempt is >= 2x the password length, not against the real password. Any 2n-length string made
+        // BufferOverflow: the check compares the guessStr's first half against its second half once the
+        // guessStr is >= 2x the password length, not against the real password. Any 2n-length string made
         // of one repeated character trivially satisfies that, so this always succeeds in a single guess.
         if (details.passwordLength > 0) {
             passwordsToTry = ["a".repeat(details.passwordLength * 2)];

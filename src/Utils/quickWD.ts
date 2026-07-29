@@ -16,7 +16,7 @@ export async function main(ns: NS): Promise<void> {
 
   let Router: BridgeRouter | undefined;
   let GetAllServers: GetAllServersFn | undefined;
-  let GetServer: GetServerFn | undefined;
+  let GetServerFn_: GetServerFn | undefined;
 
   for (const id of Object.keys(g.webpackRequire.m).filter((moduleId: string) => !skippedModuleIds.has(moduleId))) {
     let mod;
@@ -29,13 +29,13 @@ export async function main(ns: NS): Promise<void> {
       // GetAllServers: `for (const [host, server] of AllServers.entries()) { ... servers.push(server) ... server instanceof DarknetServer }`
       if (!GetAllServers && code.includes(".entries())") && code.includes("push(") && code.includes("instanceof")) GetAllServers = value as unknown as GetAllServersFn;
       // Fallback: sibling of AddToAllServers, returns `X ?? null`.
-      if (!GetServer && code.includes("Tryingtoaddaserverwithanexisting")) {
+      if (!GetServerFn_ && code.includes("Tryingtoaddaserverwithanexisting")) {
         for (const inner of Object.values(mod) as unknown[]) {
-          if (typeof inner === "function" && compact(inner as (...args: unknown[]) => unknown).includes("??null")) GetServer = inner as unknown as GetServerFn;
+          if (typeof inner === "function" && compact(inner as (...args: unknown[]) => unknown).includes("??null")) GetServerFn_ = inner as unknown as GetServerFn;
         }
       }
     }
-    if (Router && (GetAllServers || GetServer)) break;
+    if (Router && (GetAllServers || GetServerFn_)) break;
   }
 
   if (!Router) {
@@ -43,7 +43,7 @@ export async function main(ns: NS): Promise<void> {
     return;
   }
 
-  const wd = GetAllServers ? GetAllServers(true).find((s) => s.hostname === "w0r1d_d43m0n") : GetServer?.("w0r1d_d43m0n");
+  const wd = GetAllServers ? GetAllServers(true).find((s) => s.hostname === "w0r1d_d43m0n") : GetServerFn_?.("w0r1d_d43m0n");
   if (wd) wd.backdoorInstalled = true;
   else ns.tprint("WARN quickWD: could not flag w0r1d_d43m0n as backdoored; proceeding to BitVerse anyway.");
 
