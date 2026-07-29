@@ -32,6 +32,11 @@ export interface WacnOSConfig {
     // --- Autopilot ---
     autopilotEnabled: boolean;
     autopilotAutoStart: boolean;
+    /**
+     * Buy the TOR router and port crackers automatically. Runs independently of the autopilot,
+     * because TOR gates the terminal `buy` command and is needed long before the daemon can start.
+     */
+    autoProcure: boolean;
     route: RouteId;
     /** BitNode numbers used when route === "custom". */
     customRoute: number[];
@@ -60,6 +65,7 @@ const DEFAULT_CONFIG: WacnOSConfig = {
 
     autopilotEnabled: false,
     autopilotAutoStart: false,
+    autoProcure: true,
     route: "bn1-to-bn4",
     customRoute: [],
     moveOnNextNode: true,

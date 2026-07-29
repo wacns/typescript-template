@@ -8,9 +8,11 @@ import {Banner, CategoryRow, Cycler, MeterBar, Row, TelemetryRow, Toggle} from "
 import {ROUTE_IDS, ROUTE_LABELS} from "WacnOS/autopilot/route";
 import {clearMarker, readMarker} from "WacnOS/autopilot/resume";
 import {AUTOPILOT_HEADROOM, MIN_HOME_RAM} from "WacnOS/autopilot/phases";
+import {procurementState} from "WacnOS/launcher/procure";
 
 const HACKLOOP_SCRIPT = "WacnOS/launcher/hackloop.js";
 const AUTOPILOT_SCRIPT = "WacnOS/autopilot/daemon.js";
+const PROCURE_SCRIPT = "WacnOS/launcher/procure.js";
 const SPHYXOS_LOADER = "SphyxOS/bins/LoaderSphyxOS.js";
 
 const NEXT_NODE_DRIVERS: NextNodeDriver[] = ["wacnos", "sphyxos", "none"];
@@ -40,8 +42,19 @@ export async function main(ns: NS): Promise<void> {
         ns.clearPort(WacnPorts.LOADER_PID);
     });
 
+    // Procurement goes FIRST, and deliberately so.
+    //
+    // TOR gates the terminal `buy` command, which gates the five port crackers, which gate rooting
+    // and therefore the entire hacking economy. It also can't wait for the autopilot, which won't
+    // start below MIN_HOME_RAM. On a fresh 8GB node procurement (2.25GB) and the hacking loop
+    // (6.35GB) do not fit together, so the loop yields for the minute or two procurement needs and
+    // then starts - procurement self-terminates once everything is bought.
+    const procuring = config.autoProcure && startProcurement(ns, config);
+
     if (config.autoStartHackLoop && ns.peek(WacnPorts.HACKLOOP_PID) === "NULL PORT DATA") {
-        startHackLoop(ns, config);
+        if (!startHackLoop(ns, config) && procuring) {
+            ns.toast("WacnOS: buying TOR and port crackers first; the hacking loop starts once that's done.", "info");
+        }
     }
 
     // `run WacnOS/WLoader.js autopilot` is how the autopilot gets going again after an
@@ -58,11 +71,12 @@ export async function main(ns: NS): Promise<void> {
     });
 }
 
-function startHackLoop(ns: NS, config: WacnOSConfig): boolean {
+/** `quiet` suppresses the RAM warning, for the retry loop that would otherwise toast every 10s. */
+function startHackLoop(ns: NS, config: WacnOSConfig, quiet = false): boolean {
     const ramNeeded = ns.getScriptRam(HACKLOOP_SCRIPT);
     const ramFree = ns.getServerMaxRam("home") - ns.getServerUsedRam("home");
     if (ramNeeded <= 0 || ramFree < ramNeeded) {
-        ns.toast(`WacnOS: not enough home RAM to start the hacking loop (needs ${ramNeeded.toFixed(2)}GB).`, "error");
+        if (!quiet) ns.toast(`WacnOS: not enough home RAM to start the hacking loop (needs ${ramNeeded.toFixed(2)}GB).`, "error");
         return false;
     }
     const args = config.hackLoopPurchaseServers ? ["purchase"] : [];
@@ -137,6 +151,29 @@ function resumeAfterRestart(ns: NS, config: WacnOSConfig): void {
 }
 
 /**
+ * Starts the TOR/program buyer if there is anything left for it to buy.
+ *
+ * Deliberately not gated on home RAM: it is small, and it is most needed exactly when the machine
+ * is smallest. Re-running it is harmless - it exits immediately once everything is owned.
+ */
+function startProcurement(ns: NS, config: WacnOSConfig): boolean {
+    const done = ns.hasTorRouter()
+        && ["BruteSSH.exe", "FTPCrack.exe", "relaySMTP.exe", "HTTPWorm.exe", "SQLInject.exe"]
+            .every((p) => ns.fileExists(p, "home"));
+    if (done) return false;
+
+    for (const proc of ns.ps("home")) {
+        if (proc.filename === PROCURE_SCRIPT) return false; // already running
+    }
+
+    const ramNeeded = ns.getScriptRam(PROCURE_SCRIPT);
+    const ramFree = ns.getServerMaxRam("home") - ns.getServerUsedRam("home");
+    if (ramNeeded <= 0 || ramFree < ramNeeded) return false;
+
+    return ns.exec(PROCURE_SCRIPT, "home", 1, config.reserveMoney) > 0;
+}
+
+/**
  * Starts the autopilot, refusing when home is too small for it to actually work.
  *
  * "Enough RAM to load" is not the same as "enough RAM to run". The daemon needs room left over
@@ -181,12 +218,28 @@ function LoaderApp({ns, initialConfig}: LoaderAppProps) {
     const [autoRunning, setAutoRunning] = React.useState(ns.peek(WacnPorts.AUTOPILOT_PID) !== "NULL PORT DATA");
     const [autoStatus, setAutoStatus] = React.useState<AutopilotStatus | null>(readAutopilotStatus(ns));
 
+    // The poll closes over its first render, so config is read through a ref to stay current.
+    const configRef = React.useRef(config);
+    configRef.current = config;
+
     React.useEffect(() => {
+        let tick = 0;
         const timer = setInterval(() => {
             setRunning(ns.peek(WacnPorts.HACKLOOP_PID) !== "NULL PORT DATA");
             setStatus(readHackLoopStatus(ns));
             setAutoRunning(ns.peek(WacnPorts.AUTOPILOT_PID) !== "NULL PORT DATA");
             setAutoStatus(readAutopilotStatus(ns));
+
+            // Every ~10s, pick up anything that couldn't start earlier. On a fresh node the
+            // hacking loop loses the RAM race to procurement; once procurement finishes and frees
+            // its 2.25GB, this is what actually starts the loop rather than leaving the player
+            // with a permanently idle machine.
+            if (++tick % 20 !== 0) return;
+            const current = configRef.current;
+            if (current.autoProcure) startProcurement(ns, current);
+            if (current.autoStartHackLoop && ns.peek(WacnPorts.HACKLOOP_PID) === "NULL PORT DATA") {
+                startHackLoop(ns, current, true);
+            }
         }, 500);
         return () => clearInterval(timer);
     }, []);
@@ -212,6 +265,7 @@ function LoaderApp({ns, initialConfig}: LoaderAppProps) {
 
     const line = theme.well;
     const statusColor = running ? theme.success : theme.error;
+    const procurement = procurementState(ns);
     // Handing the next node to SphyxOS is only offerable if SphyxOS is actually installed.
     const sphyxAvailable = ns.fileExists(SPHYXOS_LOADER, "home");
     const securityPercent = status ? Math.max(0, 100 - (status.securityCur - status.securityMin) * 5) : 0;
@@ -302,6 +356,14 @@ function LoaderApp({ns, initialConfig}: LoaderAppProps) {
                 <Row label="auto-start on load" line={line}>
                     <Toggle on={config.autopilotAutoStart} activeColor={theme.primary} offColor={theme.disabled}
                             onClick={() => update({autopilotAutoStart: !config.autopilotAutoStart})}/>
+                </Row>
+                <Row label={`auto-buy TOR + crackers (${procurement.tor ? "TOR" : "no TOR"}, ${procurement.owned}/${procurement.total})`} line={line}>
+                    <Toggle on={config.autoProcure} activeColor={theme.money} offColor={theme.disabled}
+                            onClick={() => {
+                                const next = !config.autoProcure;
+                                update({autoProcure: next});
+                                if (next) startProcurement(ns, config);
+                            }}/>
                 </Row>
                 <Row label="route" line={line}>
                     <Cycler<RouteId> value={config.route} options={ROUTE_IDS} labels={ROUTE_LABELS}
