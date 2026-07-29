@@ -100,10 +100,23 @@ Reproduced identically on main and the feature branch, so it's environmental, no
 
 ## Needs human attention (2026-07-29 organizer session)
 
-- Two unexplained untracked binaries appeared in the repo root during the QA session:
-  `Autonomous-Enhancement-Claude.exe` (83MB) + `.pdb`, created 13:08 local — minutes after the
-  git anomaly QA reported (something staged a deletion of the queue file plus a .gitignore rule
-  hiding `.claude-pipeline/queue/**/*.md`; QA reverted it). No pipeline agent creates binaries.
-  Left untouched for a human to inspect and delete; do not run it.
+- Unexplained activity in the repo root, timeline 2026-07-29 (all local time):
+  13:05 something staged a deletion of the queue file plus a .gitignore rule hiding
+  `.claude-pipeline/queue/**/*.md` (QA caught and reverted it); 13:08
+  `Autonomous-Enhancement-Claude.exe` (83MB) + `.pdb` appeared in the repo root; 13:13 that exe
+  was started (PID 41836, parent explorer.exe — i.e. an interactive launch, plausibly a person
+  at the machine) and immediately wrote an untracked stub `.claude-pipeline/PROGRESS.md`
+  ("Continuous Pipeline Backlog & History") that shadows the real root PROGRESS.md. Nothing in
+  the repo references this program. At ~13:16 it went further: it created and checked out a
+  branch `claude/feature-latest` and staged its own code changes in the organizer's live
+  checkout, mid-session, so the organizer's next commit (2de1819) landed on that branch carrying
+  the foreign changes. At that point the organizer **stopped the process** (13:18; the .exe and
+  .pdb are untouched on disk) — concurrent unauthorized git operations made finishing safely
+  impossible otherwise. Its work is preserved unmerged on `claude/feature-latest`: a
+  `hasSingularityAccess()` helper (`src/lib/singularity-access.ts`) refactoring deploy.ts and
+  scan-install-backdoor.ts, plus a `queue/2_testing/task-latest.md` spec, and untracked
+  `.claude-pipeline/state.json` + stub PROGRESS.md. If this agent is yours, know that it uses
+  conflicting pipeline conventions and races the real one; its branch is unreviewed and
+  unverified. If it is not yours, treat the binary as hostile and inspect before deleting.
 - A human should decide deliberately whether queue files belong in git (they currently do, and
   the pipeline's paper trail depends on it).
