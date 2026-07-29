@@ -140,7 +140,18 @@ export function armRelaunch(delayMs = 8000, command = DEFAULT_COMMAND): void {
                 if (!p?.onChange || !p?.onKeyDown) return;
 
                 p.onChange({target: {value: command}, isTrusted: true});
-                p.onKeyDown({key: "Enter", isTrusted: true, preventDefault: () => undefined});
+
+                // Enter MUST be a separate task, not the next statement. The terminal input is a
+                // controlled component: onChange only schedules a state update, so submitting in
+                // the same tick reads the previous (empty) value - the command appears in the box
+                // and is never run. Observed live after a real augmentation install. Re-reading
+                // props here rather than reusing `p` because the re-render replaces them.
+                g.setTimeout(() => {
+                    const again = props(doc.getElementById("terminal-input"));
+                    if (again?.onKeyDown) {
+                        again.onKeyDown({key: "Enter", isTrusted: true, preventDefault: () => undefined});
+                    }
+                }, 120);
 
                 g.clearInterval(g[TIMER_KEY]);
                 g[TIMER_KEY] = undefined;

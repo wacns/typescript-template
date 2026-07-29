@@ -6,7 +6,7 @@ import {dismissModals, goTo, PageName} from "WacnOS/dom/nav";
 import {byAriaPrefix, buttonContaining, doc, find} from "WacnOS/dom/doc";
 import {buyHomeRam, openLocation, techVendorFor, travelTo} from "WacnOS/dom/actions";
 import {backdoorFactionServers, FACTION_SERVERS, isBackdoored, pathTo} from "WacnOS/autopilot/backdoor";
-import {acceptInvite, buyAugmentation, stopWork, startFactionWork} from "WacnOS/dom/actions";
+import {acceptInvite, buyAugmentation, commitInstall, stopWork, startFactionWork} from "WacnOS/dom/actions";
 import {planPurchases, repGoalFor} from "WacnOS/autopilot/plan";
 import {armRelaunch, clearMarker, disarmRelaunch, readMarker, writeMarker} from "WacnOS/autopilot/resume";
 import {casinoWinnings, farmCasino} from "WacnOS/dom/casino";
@@ -77,6 +77,7 @@ export async function main(ns: NS): Promise<void> {
         ["money", false],
         ["hacknet", false],
         ["share", ""],
+        ["install", false],
     ]);
 
     const version = String(ns.ui.getGameInfo().version);
@@ -88,7 +89,8 @@ export async function main(ns: NS): Promise<void> {
         || flags.ladder || !!joinTarget || !!workTarget || flags.stopwork
         || flags.plan || !!String(flags.buy)
         || flags.arm || flags["arm-echo"] || flags.marker || flags.disarm
-        || flags.rng || flags.casino || flags.money || flags.hacknet || !!String(flags.share);
+        || flags.rng || flags.casino || flags.money || flags.hacknet || !!String(flags.share)
+        || flags.install;
 
     if (flags.rebuild) {
         rebuildBridge(version);
@@ -124,6 +126,43 @@ export async function main(ns: NS): Promise<void> {
     if (flags.money) await probeMoney(ns, version);
     if (flags.hacknet) await probeHacknet(ns);
     if (String(flags.share)) await probeShare(ns, String(flags.share));
+    if (flags.install) await probeInstall(ns, version);
+}
+
+/**
+ * Installs queued augmentations - IRREVERSIBLE. Prestiges the game: every script dies, hacking
+ * resets to 1, and this script does not survive its own last line.
+ *
+ * Arms the relaunch timer first, in the order autopilot/resume.ts requires. No resume marker is
+ * written, because a marker means "the autopilot initiated this and should resume" - here the
+ * request came from the operator, so the loader comes back and whatever it is configured to run
+ * runs, without the autopilot forcing itself on.
+ */
+async function probeInstall(ns: NS, version: string): Promise<void> {
+    const snap = snapshot(ns);
+    const queued = snap?.queued ?? [];
+
+    ns.tprint("=== install augmentations (IRREVERSIBLE - PRESTIGES THE GAME) ===");
+    if (queued.length === 0) {
+        ns.tprint("  nothing queued - refusing to install");
+        return;
+    }
+
+    ns.tprint(`  installing ${queued.length}: ${queued.join(", ")}`);
+    ns.tprint(`  hacking ${ns.getHackingLevel()} and $${ns.format.number(ns.getPlayer().money)} will reset`);
+    ns.tprint("  arming the relaunch timer, then installing...");
+
+    // Order matters and is not negotiable: nothing after the click is guaranteed to run.
+    armRelaunch(9000, "run WacnOS/WLoader.js");
+    await stopWork();
+
+    try {
+        await commitInstall(ns, version);
+    } catch (err) {
+        // If the click failed we are still alive - cancel the relaunch so it can't fire later.
+        disarmRelaunch();
+        ns.tprint(`  FAIL ${String(err)} (relaunch disarmed)`);
+    }
 }
 
 /**

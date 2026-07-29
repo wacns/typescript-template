@@ -493,9 +493,19 @@ function buildChecks(ns: NS, version: string, active: boolean): Check[] {
                 armRelaunch(800, "expr 31337");
                 const deadline = Date.now() + 12000;
                 while (isRelaunchArmed() && Date.now() < deadline) await ns.asleep(400);
-                return isRelaunchArmed()
-                    ? fail("timer never completed a submission - check the terminal and sidebar selectors")
-                    : pass("submitted and self-cleared; '31337' should be in the terminal");
+                if (isRelaunchArmed()) {
+                    return fail("timer never reached the terminal - check the sidebar selectors");
+                }
+
+                // Clearing the timer only proves the command was TYPED. The terminal input is a
+                // controlled component, so a submit issued in the same tick as the value change
+                // silently does nothing and the text just sits there - which is exactly what
+                // happened after a real augmentation install. An empty input is the proof.
+                await ns.asleep(700);
+                const leftover = (doc().getElementById("terminal-input") as HTMLInputElement | null)?.value ?? "";
+                return leftover.includes("expr")
+                    ? fail(`command was typed but never submitted (input still reads "${leftover}")`)
+                    : pass("typed and submitted; '31337' should be in the terminal");
             },
         },
 
