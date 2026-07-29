@@ -6,3 +6,4 @@ build/.pull-request.json
 build/sphyxos-version.txt
 build/sphyxos-version-beta.txt
 .idea/
+.claude-pipeline/pipeline.log
