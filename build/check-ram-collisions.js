@@ -19,11 +19,17 @@
  *
  * WHAT IT CHECKS
  *
- * Only DECLARATIONS and object property keys: function/const/let/var/class names, parameters, loop
- * variables. Those are unambiguous - a declaration named `workForFaction` is never a legitimate ns
- * call. Member accesses (`ns.stock.hasWseAccount()`) are deliberately NOT flagged, because there is
- * no way to tell an intended call from an accidental collision by name alone, and the intended case
- * is overwhelmingly common.
+ * Only DECLARATIONS and object property keys: function/const/let/var/class names, loop variables,
+ * catch bindings, destructuring bindings (one level deep, including renamed property keys - the
+ * game bills both sides of `{a: b}`), and named import specifiers (`import type` and `type X`
+ * specifiers are skipped: tsc erases them, so they never reach the game's AST). Those are
+ * unambiguous - a declaration named `workForFaction` is never a legitimate ns call.
+ *
+ * Function PARAMETERS are a known gap: TypeScript type annotations make parameter-name extraction
+ * regex-hostile, so a parameter named after an ns function still slips through. Member accesses
+ * (`ns.stock.hasWseAccount()`) are deliberately NOT flagged, because there is no way to tell an
+ * intended call from an accidental collision by name alone, and the intended case is
+ * overwhelmingly common.
  *
  * Usage:  node build/check-ram-collisions.js [--json]
  * Exit:   0 clean, 1 collisions found, 2 could not run the check
@@ -127,6 +133,29 @@ function declarations(code) {
     ];
     for (const pattern of patterns) {
         for (const m of code.matchAll(pattern)) record(m[1], m.index);
+    }
+
+    // Destructuring bindings: const {a, b: c, d = 1, ...rest} = x / const [a, , b] = x, including
+    // for (const {a} of ...). Every identifier in the pattern is an Identifier node the game
+    // bills - renamed property keys too, so `{a: b}` flags both. One level deep only (this is a
+    // regex checker, not a parser); default-value expressions are stripped so their contents
+    // aren't flagged.
+    for (const m of code.matchAll(/\b(?:const|let|var)\s*([{[][^}\]]*[}\]])/g)) {
+        const body = m[1].slice(1, -1).replace(/=[^,]*/g, ' ');
+        for (const id of body.matchAll(/[A-Za-z_][\w]*/g)) record(id[0], m.index);
+    }
+
+    // Named import specifiers: import {a, b as c} from "..." flags a, b, and c - the game bills
+    // both the imported and the local name. `import type {...}` lines and `type X` specifiers are
+    // skipped: tsc erases them, so they never reach the game's AST.
+    for (const m of code.matchAll(/^\s*import\s+(?!type\b)(?:[A-Za-z_][\w]*\s*,\s*)?\{([^}]*)\}/gm)) {
+        for (const spec of m[1].split(',')) {
+            const s = spec.trim();
+            if (!s || /^type\b/.test(s)) continue;
+            for (const id of s.matchAll(/[A-Za-z_][\w]*/g)) {
+                if (id[0] !== 'as') record(id[0], m.index);
+            }
+        }
     }
     return found;
 }
