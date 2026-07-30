@@ -2,6 +2,7 @@ import {NS} from "@ns";
 import {openAvailablePorts} from "lib/root-access";
 import {scanAllServers} from "lib/network-scan";
 import {ACTION_SCRIPT} from "Dispatchers/hwgw-batcher";
+import {hasSingularityAccess} from "lib/singularity-access";
 
 /** @param {NS} ns */
 export async function main(ns: NS) {
@@ -22,22 +23,7 @@ export async function main(ns: NS) {
     let currentTarget = "n00dles";
     let currentPayload = PLAIN_PAYLOAD;
 
-    // --- NEW: DYNAMIC SINGULARITY CHECK ---
-    // Check if the player has the ability to run darkweb scripts
-    let hasSingularity = false;
-    try {
-        const ownedSF = ns.singularity.getOwnedSourceFiles();
-        hasSingularity = ownedSF.some(sf => sf.n === 4);
-
-        // If they are currently inside BitNode-4, they also get free access
-        if (!hasSingularity && ns.getResetInfo().currentNode === 4) {
-            hasSingularity = true;
-        }
-    } catch (e) {
-        ns.tprint(`[WARNING] Could not determine Singularity access. Defaulting to no access. Error: ${e}`);
-        // Failsafe in case of API issues
-        hasSingularity = false;
-    }
+    const hasSingularity = hasSingularityAccess(ns);
 
     // --- SERVER MEMORY STATE ---
     const cloudMemory = new Map<string, number>();

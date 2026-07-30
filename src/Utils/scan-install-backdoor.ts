@@ -1,5 +1,6 @@
 import {NS} from "@ns";
 import {ensureRootAccess} from "lib/root-access";
+import {hasSingularityAccess} from "lib/singularity-access";
 
 async function tryBackdoor(ns: NS, target: string): Promise<void> {
     const server = ns.getServer(target);
@@ -47,8 +48,7 @@ export async function main(ns: NS): Promise<void> {
         return;
     }
 
-    const resetInfo = ns.getResetInfo();
-    if (resetInfo.currentNode !== 4 && !resetInfo.ownedSF.has(4)) {
+    if (!hasSingularityAccess(ns)) {
         ns.tprint("SKIPPED: This script needs Source-File 4 (or being in BitNode 4) to use ns.singularity.connect/installBackdoor.");
         return;
     }
