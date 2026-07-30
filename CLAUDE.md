@@ -53,7 +53,3 @@ React can be used in `.tsx` scripts via `ns.printRaw()`, importing `React` from 
 ## Style
 
 ESLint is configured (`eslint:recommended` + `@typescript-eslint/recommended`). Vendored `src/SphyxOS/`, `src/Loader.js` and `src/Dispatchers/archive/` are ignored; long-running daemons have `no-constant-condition` relaxed via an override, since `while (true)` with an inner `await` is the correct shape for a Netscript worker. No Prettier config exists.
-
-## Autonomous work
-
-`PROGRESS.md` is the state handoff between unattended sessions. They work on `claude/<slug>` branches and never merge to `main` — the merge gate is a human running the self-test in a real game.
