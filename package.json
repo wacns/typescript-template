@@ -11,8 +11,6 @@
     "lint": "eslint src",
     "check:ram": "node build/check-ram-collisions.js",
     "verify": "tsc --noEmit && eslint src && node build/check-ram-collisions.js",
-    "pipeline": "node pipeline/run.mjs",
-    "pipeline:dry": "node pipeline/run.mjs --once --dry-run",
     "update:sphyxos": "node build/update-sphyxos.js",
     "update:sphyxos:beta": "node build/update-sphyxos.js --beta",
     "pull:game": "node build/pull-from-game.js"

@@ -56,4 +56,4 @@ ESLint is configured (`eslint:recommended` + `@typescript-eslint/recommended`). 
 
 ## Autonomous work
 
-`.claude-pipeline/AGENT.md` holds the standing instructions for unattended sessions, and `PROGRESS.md` is the state handoff between them. Autonomous sessions work on `claude/<slug>` branches and never merge to `main` — the merge gate is a human running the self-test in a real game.
+`PROGRESS.md` is the state handoff between unattended sessions. They work on `claude/<slug>` branches and never merge to `main` — the merge gate is a human running the self-test in a real game.
