@@ -12,6 +12,15 @@ async function tryBackdoor(ns: NS, target: string): Promise<void> {
         return;
     }
 
+    // ensureRootAccess is not level-gated (nuke isn't either), but installBackdoor is: it throws
+    // when the level is too low, which would abort the whole DFS and leave the terminal parked on a
+    // remote server. Checked after rooting, so an out-of-reach server still gets rooted on the way past.
+    const requiredLevel = server.requiredHackingSkill ?? 0;
+    if (requiredLevel > ns.getHackingLevel()) {
+        ns.tprint(`SKIPPED: ${target} requires hacking level ${requiredLevel}, cannot install backdoor yet.`);
+        return;
+    }
+
     ns.singularity.connect(target);
 
     ns.tprint(`Installing backdoor on ${target}...`);

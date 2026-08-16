@@ -203,10 +203,13 @@ export async function main(ns: NS) {
                     ns.exec(payload, server, threads, currentTarget);
                 }
 
-                const activeWorkers = Math.floor(ns.getServerUsedRam(server) / scriptRam);
-                if (activeWorkers > 0) {
-                    totalThreads += activeWorkers;
+                // Counted from the processes themselves rather than the host's used RAM: that RAM
+                // includes this dispatcher and every unrelated script on the box, which on home in
+                // particular inflated the tally and kept the drone count from ever reaching 0.
+                const workerProcesses = ns.ps(server).filter(p => p.filename === payload && p.args[0] === currentTarget);
+                if (workerProcesses.length > 0) {
                     deployedServers++;
+                    totalThreads += workerProcesses.reduce((sum, p) => sum + p.threads, 0);
                 }
             }
         }

@@ -22,6 +22,12 @@ export function openAvailablePorts(ns: NS, target: string): number {
 /**
  * Roots a server if possible.
  *
+ * Rooting needs enough open ports and NUKE.exe - it is NOT gated on hacking level. ns.nuke() checks
+ * only hasAdminRights, ownership of NUKE.exe and openPortCount, so a level-1 player with all five
+ * crackers can root .megacorp boxes and run4theh111z. scp/exec on them need root, not level. A caller
+ * that does need a level gate - because it will hack() or installBackdoor() afterwards, both of which
+ * enforce level - must apply that check itself; this function will not do it for them.
+ *
  * `verbose` defaults to false deliberately. This is called every tick, for every server on the
  * network, by rootNewServers.js and the autopilot - and early on, most servers are unrootable
  * because the port crackers haven't been bought yet. Announcing each expected failure to the
@@ -30,12 +36,6 @@ export function openAvailablePorts(ns: NS, target: string): number {
  */
 export function ensureRootAccess(ns: NS, target: string, verbose = false): boolean {
     if (ns.hasRootAccess(target)) return true;
-
-    const requiredLevel = ns.getServerRequiredHackingLevel(target);
-    if (requiredLevel > ns.getPlayer().skills.hacking) {
-        if (verbose) ns.tprint(`Cannot root ${target}: requires hacking level ${requiredLevel}.`);
-        return false;
-    }
 
     const portsOpened = openAvailablePorts(ns, target);
     const portsRequired = ns.getServerNumPortsRequired(target);
